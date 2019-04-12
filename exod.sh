@@ -10,13 +10,51 @@
 #                                                                              #
 ################################################################################
 
-# bash script generating the filtered events file and the GTI file and computing the variability.
+################################################################################
+#                                                                              #
+# Parsing arguments                                                            #
+#                                                                              #
+################################################################################
 
-# bash variabilitectron.sh <FOLDER> <DL> <TW> <GTR> <BS>
+# Default variables
+DL=8 ; TW=100 ; GTR=1.0 ; BS=3 ; CPUS=12
+# Default folders
+FOLDER=/home/ines/data
+SCRIPTS=/home/ines/EXOD
+
+# Input variables
+while [[ $# -gt 0 ]]; do
+case "$1" in
+  # Variables
+  -dl|--detection-level)  DL=${2:-$DL}
+  shift; shift ;;
+  -tw|--time-window)      TW=${2:-$TW}
+  shift; shift ;;
+  -gtr|--good-time-ratio) GTR=${2:-$GTR}
+  shift; shift ;;
+  -bs|--box-size)         BS=${2:-$BS}
+  shift; shift ;;
+  -cpus|--cpus)           CPUS=${2:-$CPUS}
+  shift; shift ;;
+  # Folders
+  -f|--folder)            FOLDER=${2:-$FOLDER}
+  shift; shift ;;
+  -s|--scripts)           SCRIPTS=${2:-$SCRIPTS}
+  shift; shift ;;
+esac
+done
+
+echo -e "\tFOLDER          = ${FOLDER}"
+echo -e "\tSCRIPTS         = ${SCRIPTS}\n"
+echo -e "\tDETECTION LEVEL = ${DL}"
+echo -e "\tTIME WINDOW     = ${TW}"
+echo -e "\tGOOD TIME RATIO = ${GTR}" 
+echo -e "\tBOX SIZE        = ${BS}"
+echo -e "\tCPUS            = ${CPUS}"
 
 ################################################################################
 #                                                                              #
-# Defining the functions                                                       #
+# Defining functions                                                           #
 #                                                                              #
 ################################################################################
 
@@ -24,16 +62,14 @@
 ################################################################################
 
 Title(){
-  message=$1
-	i=0; x='===='
-	while [[ i -lt ${#message} ]]; do x='='$x; ((++i)); done
+  message=$1; i=0; x='===='
+  while [[ i -lt ${#message} ]]; do x='='$x; ((++i)); done
   echo -e "\n\t  $message \n\t$x"
 }
 
 title(){
-  message=$1
-	i=0; x='----'
-	while [[ i -lt ${#message} ]]; do x='-'$x; ((++i)); done
+  message=$1; i=0; x='----'
+  while [[ i -lt ${#message} ]]; do x='-'$x; ((++i)); done
   echo -e "\n\t  $message \n\t$x"
 }
 
@@ -48,7 +84,7 @@ waitForFinish()
   # Waiting while waiting = True
   while [[ $(cat $wait_file) == True ]]; do
     echo "Waiting"
-    sleep 1000
+    sleep 10
   done
   # Erasing wait_file when waiting = False
   if [[ $(cat $wait_file) == False ]]; then rm $wait_file; fi
@@ -59,58 +95,51 @@ waitForFinish()
 ################################################################################
 
 filtering(){
-  path_obs=$1
-  path_scripts=$2
-  obs=$3
+  path_scripts=$1
+  obs=$2
 
-	if [ ! -f $path_obs/$obs/PN_clean.fits ] ; then
-  		if [[ $count -lt $(( $nb_img )) ]]; then
-    			echo "bash $path_scripts/filtering.sh $path_obs $obs" >> $path_obs/process_flt_${DL}_${TW}_${GTR}_${BS}
-  		else
-    			echo -n "bash $path_scripts/filtering.sh $path_obs $obs; " >> $path_obs/process_flt_${DL}_${TW}_${GTR}_${BS}
-    			echo "echo 'False' > waiting_flt" >> $FOLDER/process_flt_${DL}_${TW}
-		fi
-	else
-		if [[ $count -eq $(( $nb_img )) ]]; then echo "echo 'False' > waiting_flt" >> $FOLDER/process_flt_${DL}_${TW}_${GTR}_${BS}; fi
-		#echo -e "Obs. $obs already filtered"
-	fi
+  if [ ! -f $path_obs/$obs/PN_clean.fits ] ; then
+    if [[ $count -le $(( $nb_img )) ]]; then
+      echo "bash $path_scripts/filtering.sh -f $FOLDER -o $obs" >> $path_obs/process_flt_${DL}_${TW}_${GTR}_${BS}
+    else
+      echo -n "bash $path_scripts/filtering.sh -f $FOLDER -o $obs; " >> $path_obs/process_flt_${DL}_${TW}_${GTR}_${BS}
+      echo "echo 'False' > waiting_flt" >> $FOLDER/process_flt_${DL}_${TW}
+    fi
+  else
+    if [[ $count -eq $(( $nb_img )) ]]; then echo "echo 'False' > waiting_flt" >> $FOLDER/process_flt_${DL}_${TW}_${GTR}_${BS}; fi
+  fi
 }
 
 variabilitectron(){
 
-	###
-	# Defining files and directories
-	###
-	# Reading the arguments
-	path_obs=$1
-  path_scripts=$2
-	obs=$3
-	DL=$4
-	TW=$5
-	GTR=$6
-	BS=$7
+  ###
+  # Defining files and directories
+  ###
+  # Reading the arguments
+  path_scripts=$1
+  obs=$2
 
-	# File names
-  path=$path_obs/$obs
-	events_file=$path/PN_clean.fits
-	gti_file=$path/PN_gti.fits
+  # File names
+  path=$FOLDER/$obs
+  events_file=$path/PN_clean.fits
+  gti_file=$path/PN_gti.fits
 
-	###
-	# Variability calculation
-	###
-	# writing detector and renderer commands to file that will be run in parallel
+  ###
+  # Variability computation
+  ###
+  # writing detector and renderer commands to file that will be run in parallel
 
-	if [[ $count -lt $(( $nb_img )) ]]; then
-		echo "python3 -W"ignore" $path_scripts/detector.py $events_file $gti_file $path/${DL}_${TW}_${GTR}_${BS} -obs $obs -bs $BS -dl $DL -tw $TW -gtr $GTR -mta 1 -ol $path_obs/variable_sources_${DL}_${TW}_${BS}" >> $path_obs/process_det_${DL}_${TW}_${GTR}_${BS}
-		echo "python3 -W"ignore" $path_scripts/renderer.py $path/${DL}_${TW}_${GTR}_${BS} $events_file -obs $obs -tw $TW -dl $DL" >> $path_obs/process_ren_${DL}_${TW}_${GTR}_${BS}
+  if [[ $count -lt $(( $nb_img )) ]]; then
+    echo "python3 -W"ignore" $path_scripts/detector.py $events_file $gti_file $path/${DL}_${TW}_${GTR}_${BS} -obs $obs -bs $BS -dl $DL -tw $TW -gtr $GTR -mta 1 -ol $path_obs/variable_sources_${DL}_${TW}_${BS}" >> $path_obs/process_det_${DL}_${TW}_${GTR}_${BS}
+    echo "python3 -W"ignore" $path_scripts/renderer.py $path/${DL}_${TW}_${GTR}_${BS} $events_file -obs $obs -tw $TW -dl $DL -bs $BS" >> $path_obs/process_ren_${DL}_${TW}_${GTR}_${BS}
 
   else
     echo -n "python3 -W"ignore" $path_scripts/detector.py $events_file $gti_file $path/${DL}_${TW}_${GTR}_${BS} -obs $obs -bs $BS -dl $DL -tw $TW -gtr $GTR -mta 1 -ol $path_obs/variable_sources_${DL}_${TW}_${BS} ; " >> $path_obs/process_det_${DL}_${TW}_${GTR}_${BS}
     echo "echo 'False' > $path_obs/waiting_det" >> $path_obs/process_det_${DL}_${TW}_${GTR}_${BS}
-		echo -n "python3 -W"ignore" $path_scripts/renderer.py $path/${DL}_${TW}_${GTR}_${BS} $events_file -obs $obs -tw $TW -dl $DL ; " >> $path_obs/process_ren_${DL}_${TW}_${GTR}_${BS}
+    echo -n "python3 -W"ignore" $path_scripts/renderer.py $path/${DL}_${TW}_${GTR}_${BS} $events_file -obs $obs -tw $TW -dl $DL -bs $BS ; " >> $path_obs/process_ren_${DL}_${TW}_${GTR}_${BS}
     echo "echo 'False' > $path_obs/waiting_ren" >> $path_obs/process_ren_${DL}_${TW}_${GTR}_${BS}
-	fi
-	((++count))
+  fi
+  ((++count))
 }
 
 lightcurves(){
@@ -119,10 +148,6 @@ lightcurves(){
   # Reading arguments
   path_obs=$1
   path_scripts=$2
-  DL=$3
-  TW=$4
-  GTR=$5
-  BS=$6
 
   echo $path_obs
 
@@ -162,20 +187,6 @@ lightcurves(){
 #                                                                              #
 ################################################################################
 
-# Defining the detection parameters
-FOLDER=$1            	  # FOLDER where obs are stored
-DL=$2                   # 10
-TW=$3                   # 100
-GTR=$4                  # 1.0
-BS=$5			# 5
-CPUS=30
-
-# Folders where the different files necessary for the analysis are stored
-SCRIPTS=/mnt/data/Ines/progs
-FOLDER_CCF=/mnt/xmmcat/xmm-calib/ccf
-FOLDER_EVTS=/mnt/xmmcat/3xmm_pievli
-FOLDER_FBKT=/mnt/data/Ines/data/fbktsr_dr5
-
 # Retrieving a list of observations
 cd $FOLDER
 imgfull=(0*)
@@ -197,28 +208,29 @@ echo "echo 'True' > $FOLDER/waiting_lc" >> process_lc_${DL}_${TW}_${GTR}_${BS}
 
 start=$(date)
 time {
-	nb_img=${#imgfull[@]}
+  nb_img=${#imgfull[@]}
+  echo $nb_img
 
   Title "Writing commands to files"
   # Writing commands to files to run them in parallel
-	for obs in "${imgfull[@]}"; do
- 		# Filtering observations
-    filtering $FOLDER $SCRIPTS $obs
-		# Variability computation
-    variabilitectron $FOLDER $SCRIPTS $obs $DL $TW $GTR $BS
-	done
+  for obs in "${imgfull[@]}"; do
+    # Filtering observations
+    filtering $SCRIPTS $obs
+    # Variability computation
+    variabilitectron $SCRIPTS $obs
+  done
 
   # Filtering observations
   Title "Filtering observations"
-  #bash $SCRIPTS/parallel.sh $FOLDER/process_flt_${DL}_${TW}_${GTR}_${BS} $CPUS
-  #waitForFinish $FOLDER/waiting_flt
+  bash $SCRIPTS/parallel.sh $FOLDER/process_flt_${DL}_${TW}_${GTR}_${BS} $CPUS
+  waitForFinish $FOLDER/waiting_flt
 
-	# Running detector
+  # Running detector
   Title "Applying detector"
   bash $SCRIPTS/parallel.sh $FOLDER/process_det_${DL}_${TW}_${GTR}_${BS} $CPUS
   waitForFinish $FOLDER/waiting_det
 
-	# Running renderer
+  # Running renderer
   Title "Applying renderer"
   bash $SCRIPTS/parallel.sh $FOLDER/process_ren_${DL}_${TW}_${GTR}_${BS} $CPUS
   waitForFinish $FOLDER/waiting_ren
@@ -227,7 +239,7 @@ time {
   observations=($FOLDER/0*/${DL}_${TW}_${GTR}/sources.pdf)
   gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=$FOLDER/variability_observations_${DL}_${TW}_${GTR}_${BS}.pdf ${observations[@]}
 
-	# Generating lightcurves
+  # Generating lightcurves
   #Title "Generating lightcurves"
   #lightcurves $FOLDER $SCRIPTS $DL $TW $GTR $BS
   #bash $SCRIPTS/parallel.sh $FOLDER/process_lc_${DL}_${TW}_${GTR}_${BS} $CPUS
@@ -237,7 +249,7 @@ time {
   #sources=($FOLDER/0*/lcurve_${TW}/J*lc_${TW}.pdf)
   #gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=$FOLDER/variable_sources_${DL}_${TW}_${GTR}_${BS}.pdf ${sources[@]}
 
-	echo -e "\nTotal execution time for $nb_img obs. : "
+  echo -e "\nTotal execution time for $nb_img obs. : "
 }
 end=$(date)
 echo -e "Start : $start\nEnd  : $end"

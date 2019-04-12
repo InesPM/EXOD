@@ -4,68 +4,96 @@
 #                                                                              #
 # EXOD - EPIC-pn XMM-Newton Outburst Detector                                  #
 #                                                                              #
-# Automatic lightcurve generation of the detected variable sources             #
+# Manual lightcurve generation of the detected variable sources                #
 #                                                                              #
 # Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com               #
 #                                                                              #
 ################################################################################
 
-# bash script generating lightcurves and computing the chi-square and 
-# Kolmogorov-Smirnov probability of constancy for sources detected by EXOD 
-# from the manually given position.
-
-# Input arguments: <folder> <DL> <TW> <BS> <observation> <id>
-
-# Style functions
+################################################################################
+#                                                                              #
+# Parsing arguments                                                            #
+#                                                                              #
 ################################################################################
 
+# Default variables
+DL=8 ; TW=100 ; GTR=1.0 ; BS=3; ID=1
+# Default folders
+FOLDER=/mnt/data/Ines/DR5
+SCRIPTS=/mnt/data/Ines/progs
+
+# Input variables
+while [[ $# -gt 0 ]]; do
+case "$1" in
+  -o|-obs|--observation)  OBS=${2}
+  shift; shift ;;
+  # Variables
+  -dl|--detection-level)  DL=${2:-$DL}
+  shift; shift ;;
+  -tw|--time-window)      TW=${2:-$TW}
+  shift; shift ;;
+  -gtr|--good-time-ratio) GTR=${2:-$GTR}
+  shift; shift ;;
+  -bs|--box-size)         BS=${2:-$BS}
+  shift; shift ;;
+  -id|--source-id)        ID=${2:-$ID}
+  shift; shift ;;
+  # Folders
+  -f|--folder)            FOLDER=${2:-$FOLDER}
+  shift; shift ;;
+  -s|--scripts)           SCRIPTS=${2:-$SCRIPTS}
+  shift; shift ;;
+esac
+done
+
+output_log=$FOLDER/sources_variability_${DL}_${TW}_${GTR}_${BS}
+path=$FOLDER/$OBS
+
+###
+# Defining functions
+###
+
 title1(){
-  message=$1
-	i=0; x='===='
-	while [[ i -lt ${#message} ]]; do x='='$x; ((++i)); done
+  message=$1; i=0; x='===='
+  while [[ i -lt ${#message} ]]; do x='='$x; ((++i)); done
   echo -e "\n\t  $message \n\t$x\n"
 }
 
 title2(){
-  message="$1 $observation"
-	i=0; x='----'
-	while [[ i -lt ${#message} ]]; do x='-'$x; ((++i)); done
+  message="$1 $OBS"; i=0; x='----'
+  while [[ i -lt ${#message} ]]; do x='-'$x; ((++i)); done
   echo -e "\n\t  $message \n\t$x"
 }
 
 title3(){
-  message="$1 $observation"
-  echo -e "\n # $message"
+  message="$1 $OBS"; echo -e "\n # $message"
 }
 
 input(){
-  message="$1"
-  var="$2"
+  message="$1"; var="$2"
   read -p "$(tput setaf 6)$message $(tput sgr 0)" out 
   printf -v $var $out
 }
 
 ################################################################################
 
-# Input variables
-folder=$1
-observation=$2
-DL=$3
-TW=$4
-BS=3 #BS=$4
-id=$5
+title1 "Lightcurve Obs. $OBS Src. $ID"
 
-title1 "Lightcurve Obs. $observation Src. $id"
+echo -e "\tFOLDER          = ${FOLDER}"
+echo -e "\tSCRIPTS         = ${SCRIPTS}"
+echo -e "\tOUTPUT LOG      = ${output_log}\n"
+echo -e "\tDETECTION LEVEL = ${DL}"
+echo -e "\tTIME WINDOW     = ${TW}"
+echo -e "\tGOOD TIME RATIO = ${GTR}" 
+echo -e "\tBOX SIZE        = ${BS}"
+echo -e "\tCPUS            = ${CPUS}"
 
 # Selecting the files and paths
-path=$folder/$observation	
-scripts=/mnt/data/Ines/progs			
-output_log=$folder/sources_variability_all_${DL}_${TW}_1_${BS}
-sums=/mnt/xmmcat/3XMM_data/SumSas_files_4Webcat
-fbks=/mnt/data/Ines/data/fbktsr_dr5
 clean_file=$path/PN_clean.fits
 gti_file=$path/PN_gti.fits
 img_file=$path/PN_image.fits
+sum_file=$(ls $path/*SUM.ASC)
+fbk_file=$(ls $path/*$OBS*PNS*FBKTSR*)
 path_out=$path/lcurve_${TW}
 if [ ! -d $path_out ]; then mkdir $path_out; fi
 cd $path
@@ -76,14 +104,6 @@ export SAS_CCF=$path/ccf.cif
 export HEADAS=/usr/local/heasoft-6.22.1/x86_64-unknown-linux-gnu-libc2.19/
 . $HEADAS/headas-init.sh
 . /usr/local/SAS/xmmsas_20170719_1539/setsas.sh
-
-if [ ! -f $path/*SUM.ASC ]; then 
-  cp $sums/*$observation*SUM.ASC $path
-fi
-sum_file=$(ls $path/*SUM.ASC)
-if [ ! -f $fbks/*$observation*PNS*FBKTSR ]; then 
-  wget -nv "http://nxsa.esac.esa.int/nxsa-sl/servlet/data-action-aio?obsno=${observation}&name=FBKTSR&instname=PN&level=PPS&extension=FTZ" -O $fbks/P${observation}PNS001FBKTSR0000.FTZ; fi
-fbk_file=$(ls $fbks/*$observation*PNS*FBKTSR*)
 if [ ! -f $path/ccf.cif ]; then cifbuild; fi
 
 # Setting SAS tools	
@@ -95,14 +115,14 @@ if [ ! -f $path/ccf.cif ]; then cifbuild; fi
 
 # Source selection
 echo "  Select the source and background extraction region (X,Y,R): "
-if [ ! -f $path/${DL}_${TW}_1.0_${BS}/sources.pdf ]; then python3 /home/pastor/python3 -Wignore $scripts/renderer.py $folder/$observation/${DL}_${TW}_1.0_${BS} $clean_file -obs $observation -tw $TW -dl $DL
+if [ ! -f $path/${DL}_${TW}_1.0_${BS}/sources.pdf ]; then python3 /home/pastor/python3 -Wignore $SCRIPTS/renderer.py $folder/$OBS/${DL}_${TW}_1.0_${BS} $clean_file -obs $OBS -tw $TW -dl $DL
 fi
-if [ $id == "1" ]; then 
+if [ $ID == "1" ]; then 
 ds9 $clean_file -bin factor 64 -scale log -cmap b -mode region &
 evince $path/${DL}_${TW}_1.0_${BS}/sources.pdf &
 fi
 evselect table=$clean_file imagebinning=binSize imageset=$img_file withimageset=yes xcolumn=X ycolumn=Y ximagebinsize=80 yimagebinsize=80
-data=$(cat $path/${DL}_${TW}_1.0_${BS}/detected_variable_sources.csv | grep "^${id};")
+data=$(cat $path/${DL}_${TW}_1.0_${BS}/detected_variable_sources.csv | grep "^${ID};")
 title3 $data
 
 ###
@@ -119,16 +139,15 @@ srcR=$((${array[4]} * 64))
 ecoordconv imageset=$img_file coordtype=raw x=$rawx y=$rawy ccdno=$ccd |grep 'X: Y:'
 
 input "Proceed? [y/n] " reply
+if [[ $reply = [n,N]* ]] ; then exit; fi
 
-if [[ $reply =~ ^[Yy]$ ]] ;then
-
-	echo -e "\n"
-	input "Source position     [X] " srcX
-	input "Source position     [Y] " srcY 
-	input "Background position [X] " bgdX
-	input "Background position [Y] " bgdY
-	input "Radius              [R] " R
-	echo -e "\n"
+echo -e "\n"
+input "Source position     [X] " srcX
+input "Source position     [Y] " srcY 
+input "Background position [X] " bgdX
+input "Background position [Y] " bgdY
+input "Radius              [R] " R
+echo -e "\n"
 
 srccoord=$(ecoordconv imageset=$img_file coordtype=POS x=$srcX y=$srcY pos2eqpos=yes | tee /dev/tty|grep ' RA: DEC: ' | sed 's/ RA: DEC: //g')
 
@@ -185,23 +204,22 @@ evselect table=$clean_file energycolumn=PI expression="$bgdexp" withrateset=yes 
 
 title3 "epiclccorr"
 epiclccorr srctslist=$path_out/${src}_lc_${TW}_src.lc eventlist=$clean_file outset=$path_out/${src}_lccorr_${TW}.lc bkgtslist=$path_out/${src}_lc_${TW}_bgd.lc withbkgset=yes applyabsolutecorrections=yes -V 0
-#fi
-
 sleep 1
 
 title3 "lcstats"
-lcstats cfile1="$path_out/${src}_lccorr_1.lc" window=$path/PN_gti.wi dtnb=$TW nbint=1000000 tchat=2 logname="$path_out/${src}_xronos.log"
-P=$(lcstats cfile1="$path_out/${src}_lccorr_1.lc" window=$path/PN_gti.wi dtnb=1 nbint=1000000 tchat=2 logname="$path_out/${src}_xronos.log" | grep "Prob of constancy")
-sleep 5
+lcstats cfile1="$path_out/${src}_lccorr_${TW}.lc" window=$path/PN_gti.wi dtnb=${TW} nbint=1000000 tchat=2
+P=$(lcstats cfile1="$path_out/${src}_lccorr_${TW}.lc" window=$path/PN_gti.wi dtnb=${TW} nbint=1000000 tchat=2 | grep "Prob of constancy")
+sleep 1
+
 P_chisq=$(echo $P | sed "s/Chi-Square Prob of constancy. //" | sed "s/ (0 means.*//")
 P_KS=$(echo $P | sed "s/.*Kolm.-Smir. Prob of constancy //" |  sed "s/ (0 means.*//")
 
 echo -e "Probabilities of constancy : \n\tP_chisq = $P_chisq\n\tP_KS    = $P_KS"
 
 title3 "lcurve"
-python3 $scripts/lcurve.py -src $path_out/${src}_lc_${TW}_src.lc -bgd $path_out/${src}_lc_${TW}_bgd.lc -gti $path/PN_gti.fits -dtnb $TW -outdir $path_out -name $src -text "\$P_{\chi^2} = $P_chisq$;\$P_{KS} = $P_KS$" -obs $observation -id $id
+python3 $SCRIPTS/lcurve.py -src $path_out/${src}_lc_${TW}_src.lc -bgd $path_out/${src}_lc_${TW}_bgd.lc -gti $path/PN_gti.fits -dtnb $TW -outdir $path_out -name $src -Pcs $P_chisq -PKS $P_KS -obs $OBS -id $ID
 
-echo -e " # Source $path_out/${src}_lc_${TW}.pdf"
+echo -e " # Source $path_out/${OBS}_${src}_lc_${TW}.pdf"
 
 end=`date +%s`
 runtime=$((end-start))
@@ -211,8 +229,7 @@ runtime=$((end-start))
 ###
 
 echo -e > $path_out/${src}_region.txt "Source     = $srcexp\nBackground = $bgdexp\nTotal time = $runtime"
-echo -e >> $output_log "$observation $id $src $DL $TW $P_chisq $P_KS"
+echo -e >> $output_log "$OBS $ID $src $DL $TW $P_chisq $P_KS"
 
-echo -e " # Total time obs. $observation : $runtime seconds"
-echo -e "\nObservation $observation ended\nTotal time = $runtime seconds"
-fi
+echo -e " # Total time obs. $OBS : $runtime seconds"
+echo -e "\nObservation $OBS ended\nTotal time = $runtime seconds"

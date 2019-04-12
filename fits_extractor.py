@@ -4,8 +4,7 @@
 
 ################################################################################
 #                                                                              #
-# EXOD - EPIC-pn XMM-Newton Outburst Detector                                  # 
-#                                                                              #
+# EXOD - EPIC-pn XMM-Newton Outburst Detector                                  # #                                                                              #
 # DETECTOR utilities                                                           #
 #                                                                              #
 # Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com               #

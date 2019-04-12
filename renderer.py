@@ -3,11 +3,11 @@
 
 ################################################################################
 #                                                                              #
-# EXOD - EPIC-pn XMM-Newton Outburst Detector                                  #
+# Variabilitectron - Searching variability into XMM-Newton data                #
 #                                                                              #
 # RENDERER main programme                                                      #
 #                                                                              #
-# Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com               #
+# Inés Pastor Marazuela (2018) - ines.pastor.marazuela@gmail.com               #
 #                                                                              #
 ################################################################################
 """
@@ -161,7 +161,7 @@ def render_variability_whole_image(data, sources, output_file, obs, maximum_valu
     """
 
     # Obtaining the WCS transformation parameters
-    fileopen = args.evts
+    fileopen = args.evts 
     hdu = fits.open(fileopen)
     w = wcs.WCS(hdu[0].header)
     header  = hdu[0].header

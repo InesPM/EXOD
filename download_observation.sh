@@ -18,3 +18,6 @@ rm *ATS.FIT *TCS.FIT *RAS.ASC *ROS.ASC MANIFEST* *.TAR
 # Fbktsr
 curl -o $path/P${obs}PNS001FBKTSR0000.FTZ "http://nxsa.esac.esa.int/nxsa-sl/servlet/data-action-aio?obsno=${obs}&name=FBKTSR&instname=PN&level=PPS&extension=FTZ"
 
+
+
+
