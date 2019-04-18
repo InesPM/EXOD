@@ -75,19 +75,14 @@ title(){
 
 waitForFinish()
 {
-  wait_file=$1
-  # Waiting until file is created
-  while [[ ! -f $wait_file ]]; do
-    echo "waiting does not exist"
-    sleep 10
+  STRING=$1;
+  # wait until jobs have started
+  sleep 1
+  # check, twice, whether all done
+  for i in 1 2 ; do
+    job=99
+    while [ $job -gt 0 ] ; do sleep 10; job=`top -b | head -n 40 | grep ${STRING} | wc -l`; done
   done
-  # Waiting while waiting = True
-  while [[ $(cat $wait_file) == True ]]; do
-    echo "Waiting"
-    sleep 10
-  done
-  # Erasing wait_file when waiting = False
-  if [[ $(cat $wait_file) == False ]]; then rm $wait_file; fi
 }
 
 
@@ -95,18 +90,10 @@ waitForFinish()
 ################################################################################
 
 filtering(){
-  path_scripts=$1
-  obs=$2
+  obs=$1
 
-  if [ ! -f $path_obs/$obs/PN_clean.fits ] ; then
-    if [[ $count -le $(( $nb_img )) ]]; then
-      echo "bash $path_scripts/filtering.sh -f $FOLDER -o $obs" >> $path_obs/process_flt_${DL}_${TW}_${GTR}_${BS}
-    else
-      echo -n "bash $path_scripts/filtering.sh -f $FOLDER -o $obs; " >> $path_obs/process_flt_${DL}_${TW}_${GTR}_${BS}
-      echo "echo 'False' > waiting_flt" >> $FOLDER/process_flt_${DL}_${TW}
-    fi
-  else
-    if [[ $count -eq $(( $nb_img )) ]]; then echo "echo 'False' > waiting_flt" >> $FOLDER/process_flt_${DL}_${TW}_${GTR}_${BS}; fi
+  if [ ! -f $FOLDER/$obs/PN_clean.fits ] ; then
+    echo "bash $SCRIPTS/filtering.sh -f $FOLDER -o $obs" >> $FOLDER/process_flt_${DL}_${TW}_${GTR}_${BS}
   fi
 }
 
@@ -115,9 +102,7 @@ variabilitectron(){
   ###
   # Defining files and directories
   ###
-  # Reading the arguments
-  path_scripts=$1
-  obs=$2
+  obs=$1
 
   # File names
   path=$FOLDER/$obs
@@ -128,38 +113,23 @@ variabilitectron(){
   # Variability computation
   ###
   # writing detector and renderer commands to file that will be run in parallel
-
-  if [[ $count -lt $(( $nb_img )) ]]; then
-    echo "python3 -W"ignore" $path_scripts/detector.py $events_file $gti_file $path/${DL}_${TW}_${GTR}_${BS} -obs $obs -bs $BS -dl $DL -tw $TW -gtr $GTR -mta 1 -ol $path_obs/variable_sources_${DL}_${TW}_${BS}" >> $path_obs/process_det_${DL}_${TW}_${GTR}_${BS}
-    echo "python3 -W"ignore" $path_scripts/renderer.py $path/${DL}_${TW}_${GTR}_${BS} $events_file -obs $obs -tw $TW -dl $DL -bs $BS" >> $path_obs/process_ren_${DL}_${TW}_${GTR}_${BS}
-
-  else
-    echo -n "python3 -W"ignore" $path_scripts/detector.py $events_file $gti_file $path/${DL}_${TW}_${GTR}_${BS} -obs $obs -bs $BS -dl $DL -tw $TW -gtr $GTR -mta 1 -ol $path_obs/variable_sources_${DL}_${TW}_${BS} ; " >> $path_obs/process_det_${DL}_${TW}_${GTR}_${BS}
-    echo "echo 'False' > $path_obs/waiting_det" >> $path_obs/process_det_${DL}_${TW}_${GTR}_${BS}
-    echo -n "python3 -W"ignore" $path_scripts/renderer.py $path/${DL}_${TW}_${GTR}_${BS} $events_file -obs $obs -tw $TW -dl $DL -bs $BS ; " >> $path_obs/process_ren_${DL}_${TW}_${GTR}_${BS}
-    echo "echo 'False' > $path_obs/waiting_ren" >> $path_obs/process_ren_${DL}_${TW}_${GTR}_${BS}
-  fi
+  echo "python3 -W"ignore" $SCRIPTS/detector.py $events_file $gti_file $path/${DL}_${TW}_${GTR}_${BS} -obs $obs -bs $BS -dl $DL -tw $TW -gtr $GTR -mta 1 -ol $FOLDER/variable_sources_${DL}_${TW}_${GTR}_${BS}" >> $FOLDER/process_det_${DL}_${TW}_${GTR}_${BS}
+  echo "python3 -W"ignore" $SCRIPTS/renderer.py $path/${DL}_${TW}_${GTR}_${BS} $events_file -obs $obs -tw $TW -dl $DL -bs $BS" >> $FOLDER/process_ren_${DL}_${TW}_${GTR}_${BS}
   ((++count))
 }
 
 lightcurves(){
-  Title "Generating lightcurves"
-
-  # Reading arguments
-  path_obs=$1
-  path_scripts=$2
-
-  echo $path_obs
 
   # Output file
-  echo "Observation Source DL TW P_chisq P_KS" >> $path_obs/sources_variability_${DL}_${TW}_${GTR}_${BS}
+  echo "Observation Source DL TW P_chisq P_KS" >> $FOLDER/sources_variability_${DL}_${TW}_${GTR}_${BS}
 
   # Reading file
   let i=0
-  while IFS=$'\n' read -r line; do
-  	line_data[i]="${line}"
-  	((++i))
-  done < $path_obs/variable_sources_${DL}_${TW}_${GTR}_${BS}
+  while read line ; do
+    line_data[$i]="${line}"
+    ((++i))
+    echo $i
+  done < $FOLDER/variable_sources_${DL}_${TW}_${GTR}_${BS}
 
   # Starting loop
   for data in "${line_data[@]:1:i-1}"; do
@@ -169,16 +139,15 @@ lightcurves(){
     src=${array[1]}
     dl=${array[2]}
     tw=${array[3]}
+    echo "Number of sources $obs : $src"
 
     count=1
-    #if [[ $dl == $DL ]] && [[ $tw == $TW ]]; then
-      while [[ $count -le $src ]] ; do
-        echo "bash $path_scripts/lightcurve.sh $path_obs/$obs $path_scripts $count $DL $TW $path_obs/sources_variability_${DL}_${TW}" >> $path_obs/process_lc_${DL}_${TW}_${GTR}_${BS}
-        ((++count))
-      done
+    while [[ $count -le $src ]] ; do
+      echo "bash $SCRIPTS/lightcurve.sh -f $FOLDER -s $SCRIPTS -o $obs -dl $DL -tw $TW -gtr $GTR -bs $BS -id $count" >> $FOLDER/process_lc_${DL}_${TW}_${GTR}_${BS}
+      ((++count))
+    done
     #fi
   done
-  echo "echo 'False' > $path_obs/waiting_lc" >> $path_obs/process_lc_${DL}_${TW}_${GTR}_${BS}
 }
 
 ################################################################################
@@ -189,18 +158,15 @@ lightcurves(){
 
 # Retrieving a list of observations
 cd $FOLDER
-imgfull=(0*)
+observations=(0*)
 count=1
 
 # Removing existing log files to avoid overwriting them
-logs=(detected_sources_${DL}_${TW}_${GTR}_${BS} process_flt_${DL}_${TW}_${GTR}_${BS} process_det_${DL}_${TW}_${GTR}_${BS} process_ren_${DL}_${TW}_${GTR}_${BS} process_lc_${DL}_${TW}_${GTR}_${BS} sources_variability_${DL}_${TW}_${GTR}_${BS} variable_sources_${DL}_${TW}_${BS})
-for l in ${logs[@]} ; do if [ -f $l ]; then rm $l; fi; done
+logs=(detected_sources_${DL}_${TW}_${GTR}_${BS} process_flt_${DL}_${TW}_${GTR}_${BS} process_det_${DL}_${TW}_${GTR}_${BS} process_ren_${DL}_${TW}_${GTR}_${BS} process_lc_${DL}_${TW}_${GTR}_${BS} sources_variability_${DL}_${TW}_${GTR}_${BS} variable_sources_${DL}_${TW}_${GTR}_${BS})
+#for l in ${logs[@]} ; do if [ -f $l ]; then rm $l; fi; done
+rm process_lc_${DL}_${TW}_${GTR}_${BS}
 
-echo "Observation sources DL TW" >> variable_sources_${DL}_${TW}_${BS}
-echo "echo 'True' > $FOLDER/waiting_flt" >> process_flt_${DL}_${TW}_${GTR}_${BS}
-echo "echo 'True' > $FOLDER/waiting_det" >> process_det_${DL}_${TW}_${GTR}_${BS}
-echo "echo 'True' > $FOLDER/waiting_ren" >> process_ren_${DL}_${TW}_${GTR}_${BS}
-echo "echo 'True' > $FOLDER/waiting_lc" >> process_lc_${DL}_${TW}_${GTR}_${BS}
+echo "Observation sources DL TW" >> variable_sources_${DL}_${TW}_${GTR}_${BS}
 
 ###
 # Launching the variability computation
@@ -208,46 +174,63 @@ echo "echo 'True' > $FOLDER/waiting_lc" >> process_lc_${DL}_${TW}_${GTR}_${BS}
 
 start=$(date)
 time {
-  nb_img=${#imgfull[@]}
+  nb_img=${#observations[@]}
   echo $nb_img
 
   Title "Writing commands to files"
   # Writing commands to files to run them in parallel
-  for obs in "${imgfull[@]}"; do
+  for obs in "${observations[@]}"; do
     # Filtering observations
-    filtering $SCRIPTS $obs
+    filtering $obs
     # Variability computation
-    variabilitectron $SCRIPTS $obs
+    variabilitectron $obs
   done
 
   # Filtering observations
   Title "Filtering observations"
   bash $SCRIPTS/parallel.sh $FOLDER/process_flt_${DL}_${TW}_${GTR}_${BS} $CPUS
-  waitForFinish $FOLDER/waiting_flt
+  waitForFinish 'evselect'
 
   # Running detector
   Title "Applying detector"
   bash $SCRIPTS/parallel.sh $FOLDER/process_det_${DL}_${TW}_${GTR}_${BS} $CPUS
-  waitForFinish $FOLDER/waiting_det
+  waitForFinish 'python'
 
   # Running renderer
   Title "Applying renderer"
   bash $SCRIPTS/parallel.sh $FOLDER/process_ren_${DL}_${TW}_${GTR}_${BS} $CPUS
-  waitForFinish $FOLDER/waiting_ren
+  waitForFinish 'python'
 
   Title "Creating big pdf with observations"
-  observations=($FOLDER/0*/${DL}_${TW}_${GTR}/sources.pdf)
-  gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=$FOLDER/variability_observations_${DL}_${TW}_${GTR}_${BS}.pdf ${observations[@]}
+  files=()
+  for obs in ${observations[@]}; do 
+    if [ -f $FOLDER/$obs/${DL}_${TW}_${GTR}_${BS}/sources.pdf ]; then 
+      files+=($FOLDER/$obs/${DL}_${TW}_${GTR}_${BS}/sources.pdf)
+    fi
+  done
+  gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=$FOLDER/variability_observations_${DL}_${TW}_${GTR}_${BS}.pdf ${files[@]}
 
   # Generating lightcurves
-  #Title "Generating lightcurves"
-  #lightcurves $FOLDER $SCRIPTS $DL $TW $GTR $BS
-  #bash $SCRIPTS/parallel.sh $FOLDER/process_lc_${DL}_${TW}_${GTR}_${BS} $CPUS
-  #waitForFinish $FOLDER/waiting_lc
+  Title "Generating lightcurves"
+  lightcurves 
+  bash $SCRIPTS/parallel.sh $FOLDER/process_lc_${DL}_${TW}_${GTR}_${BS} $CPUS
+  waitForFinish 'evince'
+  waitForFinish 'arfgen'
+  waitForFinish 'epiclccorr'
 
-  #Title "Creating big pdf with sources"
-  #sources=($FOLDER/0*/lcurve_${TW}/J*lc_${TW}.pdf)
-  #gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=$FOLDER/variable_sources_${DL}_${TW}_${GTR}_${BS}.pdf ${sources[@]}
+  Title "Creating big pdf with sources"
+  files=()
+  let i=0
+  while read line ; do
+    if [[ $line == [0-9]* ]]; then 
+      IFS=' ' read -r -a array <<< "$line"
+      obs=${array[0]}
+      src=${array[2]}
+      fil=$FOLDER/$obs/lcurve_${TW}/${src}_lc_${TW}.pdf
+      if [ -f $fil ]; then files+=($fil); fi
+    fi
+  done < $FOLDER/sources_variability_${DL}_${TW}_${GTR}_${BS}
+  gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=$FOLDER/lightcurves_${DL}_${TW}_${GTR}_${BS}.pdf ${files[@]}
 
   echo -e "\nTotal execution time for $nb_img obs. : "
 }
