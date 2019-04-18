@@ -66,10 +66,10 @@ title "Preliminaries"
 cd $path
 export SAS_ODF=$path
 export SAS_CCF=$path/ccf.cif
-export SAS_CCFPATH=/home/ines/Downloads/xmmsas_20180620_1732/ccf/
-export HEADAS=/home/ines/Downloads/heasoft-6.25/x86_64-pc-linux-gnu-libc2.27
+export SAS_CCFPATH=/opt/ccfs
+export HEADAS=/usr/local/heasoft-6.22.1/x86_64-unknown-linux-gnu-libc2.19/
 . $HEADAS/headas-init.sh
-. /home/ines/Downloads/xmmsas_20180620_1732/setsas.sh
+. /usr/local/SAS/xmmsas_20170719_1539/setsas.sh
 
 cifbuild
 
@@ -101,4 +101,5 @@ tabgtigen table=$rate_file expression="RATE<=$RATE" gtiset=$gti_file -V 0
 evselect table=$org_file withfilteredset=Y filteredset=$events_file destruct=Y keepfilteroutput=T expression="#XMMEA_EP && gti($gti_file,TIME) && (PATTERN<=4) && (PI in [500:12000])" -V 0
 
 echo > $path/PN_processing.log "Rate: $RATE"
-echo "The end" date 
+echo "The end" 
+date 
