@@ -19,8 +19,8 @@
 # Default variables
 DL=8 ; TW=100 ; GTR=1.0 ; BS=3 ; CPUS=12
 # Default folders
-FOLDER=/home/ines/data
-SCRIPTS=/home/ines/EXOD
+FOLDER=/mnt/data/Ines/data
+SCRIPTS=/mnt/data/Ines/EXOD
 
 # Input variables
 while [[ $# -gt 0 ]]; do
@@ -163,8 +163,8 @@ count=1
 
 # Removing existing log files to avoid overwriting them
 logs=(detected_sources_${DL}_${TW}_${GTR}_${BS} process_flt_${DL}_${TW}_${GTR}_${BS} process_det_${DL}_${TW}_${GTR}_${BS} process_ren_${DL}_${TW}_${GTR}_${BS} process_lc_${DL}_${TW}_${GTR}_${BS} sources_variability_${DL}_${TW}_${GTR}_${BS} variable_sources_${DL}_${TW}_${GTR}_${BS})
-#for l in ${logs[@]} ; do if [ -f $l ]; then rm $l; fi; done
-rm process_lc_${DL}_${TW}_${GTR}_${BS}
+for l in ${logs[@]} ; do if [ -f $l ]; then rm $l; fi; done
+#rm process_lc_${DL}_${TW}_${GTR}_${BS}
 
 echo "Observation sources DL TW" >> variable_sources_${DL}_${TW}_${GTR}_${BS}
 
@@ -214,9 +214,11 @@ time {
   Title "Generating lightcurves"
   lightcurves 
   bash $SCRIPTS/parallel.sh $FOLDER/process_lc_${DL}_${TW}_${GTR}_${BS} $CPUS
-  waitForFinish 'evince'
-  waitForFinish 'arfgen'
-  waitForFinish 'epiclccorr'
+  sleep 10; waitForFinish 'evince'
+  sleep 10; waitForFinish 'arfgen'
+  sleep 10; waitForFinish 'epiclccorr'
+  sleep 10; waitForFinish 'python'
+  sleep 10
 
   Title "Creating big pdf with sources"
   files=()
