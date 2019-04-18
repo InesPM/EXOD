@@ -1,4 +1,4 @@
-d #!/bin/bash
+#!/bin/bash
 
 ################################################################################
 #                                                                              #
@@ -87,7 +87,6 @@ echo -e "\tDETECTION LEVEL = ${DL}"
 echo -e "\tTIME WINDOW     = ${TW}"
 echo -e "\tGOOD TIME RATIO = ${GTR}" 
 echo -e "\tBOX SIZE        = ${BS}"
-echo -e "\tCPUS            = ${CPUS}"
 
 # Selecting the files and paths
 clean_file=$path/PN_clean.fits
@@ -103,10 +102,10 @@ cd $path
 # Setting SAS tools
 export SAS_ODF=$path
 export SAS_CCF=$path/ccf.cif
-export SAS_CCFPATH=/home/ines/Downloads/xmmsas_20180620_1732/ccf/
-export HEADAS=/home/ines/Downloads/heasoft-6.25/x86_64-pc-linux-gnu-libc2.27
+export SAS_CCFPATH=/opt/ccfs
+export HEADAS=/usr/local/heasoft-6.22.1/x86_64-unknown-linux-gnu-libc2.19/
 . $HEADAS/headas-init.sh
-. /home/ines/Downloads/xmmsas_20180620_1732/setsas.sh
+. /usr/local/SAS/xmmsas_20170719_1539/setsas.sh
 
 if [ ! -f $path/ccf.cif ]; then cifbuild; fi
 
@@ -234,7 +233,7 @@ P_KS=$(echo $P | sed "s/.*Kolm.-Smir. Prob of constancy //" |  sed "s/ (0 means.
 echo -e "Probabilities of constancy : \n\tP_chisq = $P_chisq\n\tP_KS    = $P_KS"
 
 title3 "lcurve"
-python3 $SCRIPTS/lcurve.py -src $path_out/${src}_lc_${TW}_src.lc -bgd $path_out/${src}_lc_${TW}_bgd.lc -gti $path/PN_gti.fits -dtnb $TW -outdir $path_out -name $src -Pcs $P_chisq -PKS $P_KS -obs $OBS -id $ID
+python3 $SCRIPTS/lcurve.py -src $path_out/${src}_lc_${TW}_src.lc -bgd $path_out/${src}_lc_${TW}_bgd.lc -gti $path/PN_gti.fits -dtnb $TW -outdir $path_out -name $src -Pcs "$P_chisq" -PKS "$P_KS" -obs $OBS -id $ID
 
 echo -e " # Source $path_out/${src}_lc_${TW}.pdf"
 
