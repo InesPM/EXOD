@@ -6,4 +6,8 @@ This is done by computing the variability of each pixel of the detector instead 
 
 We encourage the potential users to read the users guide (EXOD_users_guide.pdf), and especially follow the tutorial presented in section 6.
 
-If you use EXOD for your research, please acknowledge it by citing Pastor-Marazuela & Webb (in prep).
+If you use EXOD for your research, please acknowledge it by citing Pastor-Marazuela, Webb and Wojtowicz (in prep).
+
+Original project "Variabilitectron" created by Damien Wojtowicz. See previous versions:
+https://framagit.org/DWojtowicz/Variabilitectron
+https://framagit.org/InesPM/Variabilitectron
