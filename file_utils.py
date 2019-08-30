@@ -2,14 +2,14 @@
 # coding=utf-8
 
 
-################################################################################
-#                                                                              #
-# EXOD - EPIC-pn XMM-Newton Outburst Detector                                  # #                                                                              #
-# Various utilities for both detector and renderer                             #
-#                                                                              #
-# Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com               #
-#                                                                              #
-################################################################################
+########################################################################
+#                                                                      #
+# EXOD - EPIC-pn XMM-Newton Outburst Detector                          # #                                                                      #
+# Various utilities for both detector and renderer                     #
+#                                                                      #
+# Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com       #
+#                                                                      #
+########################################################################
 """
 Various resources for both detector and renderer
 """
@@ -24,17 +24,18 @@ from functools import partial
 # Third-party imports
 
 from math import *
+from astropy.table import Table
 
 # Internal imports
 
 import file_names as FileNames
 
 
-################################################################################
-#                                                                              #
-# Function and procedures                                                      #
-#                                                                              #
-################################################################################
+########################################################################
+#                                                                      #
+# Function and procedures                                              #
+#                                                                      #
+########################################################################
 
 
 def open_files(folder_name) :
@@ -78,8 +79,10 @@ def open_files(folder_name) :
 
     # Creating the file to store variability per pixel
     try :
-        variability_file = open(folder_name + FileNames.VARIABILITY, "w+")
-        variability_file.write("# Variability for each pixel.\n")
+        # variability_file = open(folder_name + FileNames.VARIABILITY, "w+")
+        # variability_file.write("# Variability for each pixel.\n")
+        # variability_file = Table(names=('VARIABILITY', 'RAWX', 'RAWY', 'CCDNR'))
+        variability_file = folder_name + FileNames.VARIABILITY
 
     except IOError as e:
         print("Error in creating variability_file.csv.\nABORTING", file=sys.stderr)
@@ -140,7 +143,7 @@ def open_files(folder_name) :
     return log_file, variability_file, variability_per_tw_file, detected_variable_areas_file, time_windows_file, detected_variable_sources
 
 
-################################################################################
+########################################################################
 
 
 def close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detected_var_sources_f) :
@@ -150,9 +153,6 @@ def close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detecte
 
     if log_f :
         log_f.close()
-
-    if var_f :
-        var_f.close()
 
     if var_per_tw_f :
         var_per_tw_f.close()
@@ -166,8 +166,24 @@ def close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detecte
     if detected_var_sources_f:
         detected_var_sources_f.close()
 
+########################################################################
 
-################################################################################
+class Tee(object):
+    """
+    Class object that will print the output to the log_f file
+    and to terminal
+    """
+    def __init__(self, *files):
+        self.files = files
+    def write(self, obj):
+        for f in self.files:
+            f.write(obj)
+            f.flush() # If you want the output to be visible immediately
+    def flush(self) :
+        for f in self.files:
+            f.flush()
+
+########################################################################
 
 
 def read_from_file(file_path, counter=False, comment_token='#', separator=';') :
@@ -196,7 +212,7 @@ def read_from_file(file_path, counter=False, comment_token='#', separator=';') :
     return data
 
 
-################################################################################
+########################################################################
 
 
 def read_tws_from_file(file_path, comment_token='#', separator=';') :
@@ -215,7 +231,7 @@ def read_tws_from_file(file_path, comment_token='#', separator=';') :
     return tws
 
 
-################################################################################
+########################################################################
 
 
 class Source(object):
@@ -272,7 +288,7 @@ class Source(object):
             self.y += 320
 
 
-################################################################################
+########################################################################
 
 
 def read_sources_from_file(file_path, comment_token='#', separator=';') :
@@ -291,12 +307,33 @@ def read_sources_from_file(file_path, comment_token='#', separator=';') :
 
     return sources
 
+########################################################################
 
-################################################################################
-#                                                                              #
-# Geometrical transformations                                                  #
-#                                                                              #
-################################################################################
+def ccd_config(data_matrix) :
+    """
+    Arranges the variability data
+    """
+    data_v = []
+
+    # XMM-Newton EPIC-pn CCD arrangement
+    ccds = [[8,7,6,9,10,11],[5,4,3,0,1,2]]
+
+    # Building data matrix
+    for c in ccds[0] :
+        data_v.extend(np.flipud(data_matrix[c]))
+    i = 0
+    for c in ccds[1] :
+        m = np.flip(data_matrix[c])
+        for j in range(64) :
+            data_v[i] = np.append(data_v[i], m[63 - j])
+            i += 1
+    return data_v
+
+########################################################################
+#                                                                      #
+# Geometrical transformations                                          #
+#                                                                      #
+########################################################################
 
 def size(x, y, alpha) :
     x0 = min(abs((x * cos (radians(alpha)) - y * sin(radians(alpha)))/(cos(2 * radians(alpha)))), abs((y * cos (radians(alpha) - pi/2) - x * sin(radians(alpha) - pi/2))/(cos(2 * radians(alpha) - pi))))

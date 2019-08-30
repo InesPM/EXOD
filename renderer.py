@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # coding=utf-8
 
-################################################################################
-#                                                                              #
-# Variabilitectron - Searching variability into XMM-Newton data                #
-#                                                                              #
-# RENDERER main programme                                                      #
-#                                                                              #
-# Inés Pastor Marazuela (2018) - ines.pastor.marazuela@gmail.com               #
-#                                                                              #
-################################################################################
+########################################################################
+#                                                                      #
+# Variabilitectron - Searching variability into XMM-Newton data        #
+#                                                                      #
+# RENDERER main programme                                              #
+#                                                                      #
+# Inés Pastor Marazuela (2018) - ines.pastor.marazuela@gmail.com       #
+#                                                                      #
+########################################################################
 """
 Renderer's main programme
 """
@@ -42,11 +42,11 @@ import argparse
 import file_names as FileNames
 from file_utils import *
 
-################################################################################
-#                                                                              #
-# Utilities                                                                    #
-#                                                                              #
-################################################################################
+########################################################################
+#                                                                      #
+# Utilities                                                            #
+#                                                                      #
+########################################################################
 
 # Argument parser
 
@@ -161,7 +161,7 @@ def render_variability_whole_image(data, sources, output_file, obs, maximum_valu
     """
 
     # Obtaining the WCS transformation parameters
-    fileopen = args.evts 
+    fileopen = args.evts
     hdu = fits.open(fileopen)
     w = wcs.WCS(hdu[0].header)
     header  = hdu[0].header

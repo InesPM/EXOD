@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # coding=utf-8
 
-################################################################################
-#                                                                              #
-# EXOD - EPIC-pn XMM-Newton Outburst Detector                                  #
-#                                                                              #
-# DETECTOR main programme                                                      #
-#                                                                              #
-# Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com               #
-#                                                                              #
-################################################################################
+########################################################################
+#                                                                      #
+# EXOD - EPIC-pn XMM-Newton Outburst Detector                          #
+#                                                                      #
+# DETECTOR main programme                                              #
+#                                                                      #
+# Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com       #
+#                                                                      #
+########################################################################
 """
 Detector's main programme
 """
@@ -25,6 +25,7 @@ from functools import partial
 from math import *
 from multiprocessing import Pool
 from astropy.io import fits
+from astropy.table import Table
 from astropy import wcs
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -38,17 +39,18 @@ from variability_utils import *
 import file_names as FileNames
 from file_utils import *
 
-################################################################################
-#                                                                              #
-# Parsing arguments                                                            #
-#                                                                              #
-################################################################################
+#############################################################################
+#                                                                           #
+# Parsing arguments                                                         #
+#                                                                           #
+#############################################################################
 
 parser = argparse.ArgumentParser()
-parser.add_argument("evts", help="Path to the clean observation file", type=str)
-parser.add_argument("gti", help="Path to the GTI file", type=str)
-parser.add_argument("out", help="Path to the folder where the output files will be stored", type=str)
-parser.add_argument("-obs", "--observation", dest="obs", help="Observation ID", default="", nargs='?', type=str)
+parser.add_argument("evts", help="Name of the clean observation file", type=str)
+parser.add_argument("gti", help="Name of the GTI file", type=str)
+parser.add_argument("path", help="Path to the folder containing the observation files", type=str)
+parser.add_argument("out", help="Path to the folder where the output files will be stored", default=None, type=str)
+parser.add_argument("-obs", "--observation", dest="obs", help="Observation ID", default=None, nargs='?', type=str)
 parser.add_argument("-bs", "--box-size", dest="bs", help="Size of the detection box in pixel^2.", default=5, nargs='?', type=int)
 parser.add_argument("-dl", "--detection-level", dest="dl", help="The number of times the median variability is required to trigger a detection.", default=10, nargs='?', type=float)
 parser.add_argument("-tw", "--time-window", dest="tw", help="The duration of the time windows.", default=100.0, nargs='?', type=float)
@@ -57,11 +59,11 @@ parser.add_argument("-mta", "--max-threads-allowed", dest="mta", help="Maximal n
 parser.add_argument("-ol", "--output-log", dest="ol", help="tName of the general output file.", nargs='?', default="detected_sources", type=str)
 args = parser.parse_args()
 
-################################################################################
-#                                                                              #
-# Functions                                                                    #
-#                                                                              #
-################################################################################
+#############################################################################
+#                                                                           #
+# Functions                                                                 #
+#                                                                           #
+#############################################################################
 
 def main_fct() :
     """
@@ -76,38 +78,46 @@ def main_fct() :
 
     # Opening the output files
     log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detected_var_sources_f = open_files(args.out)
-
     output_log = open(args.ol, 'a')
+    sys.stdout = Tee(sys.stdout, log_f)
 
-    log_f.write('Command:\n\t')
-    log_f.write(' '.join([arg for arg in sys.argv]))
-    log_f.write("\nCreation of output files over.\n")
+# Replacing log_f.write by Tee class -> print
+
+    print('Command:\n\t')
+    print(' '.join([arg for arg in sys.argv]))
+    print("\nCreation of output files over.\n")
 
     # Recovering the EVENTS list
     print('Recovering the EVENTS list\t %.3f seconds' % (time.time() - original_time))
-    log_f.write('Recovering the EVENTS list\t %.3f seconds' % (time.time() - original_time))
     try :
         data = extraction_photons(args.evts)
         header, dmin, dmax = extraction_info(args.evts)
 
     except Exception as e:
-        log_f.write("!!!!\nImpossible to extract photons. ABORTING.")
+        print("!!!!\nImpossible to extract photons. ABORTING.")
         close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detected_var_sources_f)
         exit(-2)
+
+    # Defining header variability
+    head_var_f = header
+    head_var_f.append(card=('TW', args.tw, 'Time window'))
+    head_var_f.append(card=('GTR', args.gtr, 'Good time ratio'))
+    head_var_f.append(card=('DL', args.dl, 'Detection level'))
+    head_var_f.append(card=('BS', args.bs, 'Box size'))
+    data_var_f = Table(names=('VARIABILITY', 'RAWX', 'RAWY', 'CCDNR'), dtype=('f8', 'i2', 'i2', 'i2'))
 
     # Recovering GTI list
     try:
         print('Extracting data\t\t\t %.3f seconds' % (time.time() - original_time))
-        log_f.write('Extracting gti list\t\t %.3f seconds' % (time.time() - original_time))
         gti_list = extraction_deleted_periods(args.gti)
         #print(len(gti_list))
 
     except Exception as e:
-        log_f.write("!!!!\nImpossible to extract gti. ABORTING.")
+        print("!!!!\nImpossible to extract gti. ABORTING.")
         close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detected_var_sources_f)
         exit(-2)
 
-    log_f.write("Extraction from FITS over.\n")
+    print("Extraction from FITS over.\n")
 
     time_windows = []
     t0_observation = min([evt['TIME'] for ccd in data for evt in ccd])
@@ -117,7 +127,6 @@ def main_fct() :
 # Computing variability
 ###
     print('Computing variability\t\t %.3f seconds' % (time.time() - original_time))
-    log_f.write('Computing variability\t\t %.3f seconds' % (time.time() - original_time))
     # Computing v_matrix
     v_matrix = []
 
@@ -130,30 +139,28 @@ def main_fct() :
     for ccd in range(12) :
         for i in range(64):
             for j in range(200):
-                var_f.write(str(v_matrix[ccd][i][j]) + '\n')
-
+                #var_f.write(str(v_matrix[ccd][i][j]) + '\n')
+                data_var_f.add_row([v_matrix[ccd][i][j], i+1, j+1, ccd+1])
+    fits.writeto(var_f, data_var_f, header=head_var_f, overwrite=True)
 
 ###
 # Detecting variable areas and sources
 ###
 
     print('Detecting variable areas\t %.3f seconds' % (time.time() - original_time))
-    log_f.write('Detecting variable areas\t %.3f seconds\n' % (time.time() - original_time))
     median = np.median([v_matrix[ccd][i][j] for ccd in range(12) for i in range(len(v_matrix[ccd])) for j in range(len(v_matrix[ccd][i]))])
 
     # Avoiding a too small median value for detection
-    print('\nMedian\t\t',median)
-    log_f.write('\nMedian\t\t{0}\n'.format(median))
+    print('\nMedian\t\t{0}\n'.format(median))
     if median < 0.75 :
         median = 0.75
-        log_f.write('Median switched to 0.75. \n')
+        print('Median switched to 0.75. \n')
 
     variable_areas = []
 
     # Currying the function for the pool of threads
     variable_areas_detection_partial = partial(variable_areas_detection, median, args.bs, args.dl)
-    print('Box counts\t',args.dl * ((args.bs**2)))
-    log_f.write('Box counts\t{0}'.format(args.dl * ((args.bs**2))))
+    print('Box counts\t{0}'.format(args.dl * ((args.bs**2))))
     # Performing parallel detection on each CCD
     with Pool(args.mta) as p:
         variable_areas = p.map(variable_areas_detection_partial, v_matrix)
@@ -193,8 +200,7 @@ def main_fct() :
             for p in source :
                 detected_var_areas_f.write('{0};{1};{2};{3}\n'.format(cpt_source, ccd + 1, p[0], p[1]))
 
-    print('Nb of sources\t',cpt_source)
-    log_f.write('Nb of sources\t{0}\n'.format(cpt_source))
+    print('Nb of sources\t{0}\n'.format(cpt_source))
 
 
 ###
@@ -203,14 +209,14 @@ def main_fct() :
 
     output_log.write('{0} {1} {2} {3}\n'.format(args.obs, cpt_source, args.dl, args.tw))
     output_log.close()
-    log_f.write("# TOTAL EXECUTION TIME : %s seconds\n" % (time.time() - original_time))
+    #print("# TOTAL EXECUTION TIME : %s seconds\n" % (time.time() - original_time))
     close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detected_var_sources_f)
 
-################################################################################
-#                                                                              #
-# Main programme                                                               #
-#                                                                              #
-################################################################################
+#############################################################################
+#                                                                           #
+# Main programme                                                            #
+#                                                                           #
+#############################################################################
 
 
 if __name__ == '__main__':
@@ -224,4 +230,4 @@ if __name__ == '__main__':
 
     main_fct()
 
-    print(" # Total execution time Obs. {0} : {1} seconds\n".format(args.obs, (time.time() - original_time)))
+    print(" # Total execution time OBS {0} : {1} seconds\n".format(args.obs, (time.time() - original_time)))
