@@ -20,11 +20,14 @@ import sys
 import os
 import time
 from functools import partial
+import subprocess
 
 # Third-party imports
 
 from math import *
 from astropy.table import Table
+import numpy as np
+import scipy.ndimage as nd
 
 # Internal imports
 
@@ -230,9 +233,7 @@ def read_tws_from_file(file_path, comment_token='#', separator=';') :
 
     return tws
 
-
 ########################################################################
-
 
 class Source(object):
     """
@@ -248,45 +249,70 @@ class Source(object):
     y:       The y coordinate on the output image
     """
 
-    def __init__(self, id_src, ccd, rawx, rawy, r):
+    def __init__(self, src):
         """
         Constructor for Source class. Computes the x and y attributes.
-        @param id_src:  The identifier number of the source
-        @param ccd:     The CCD where the source was detected at
-        @param rawx:    The x coordinate on the CCD
-        @param rawy:    The y coordinate on the CCD
+        @param src : source, output of variable_sources_position
+            id_src:  The identifier number of the source
+            ccd:     The CCD where the source was detected at
+            rawx:    The x coordinate on the CCD
+            rawy:    The y coordinate on the CCD
+            r:       The raw pixel radius of the detected variable area
         """
         super(Source, self).__init__()
 
-        self.id_src = id_src
-        self.ccd = ccd
-        self.rawx = rawx
-        self.rawy = rawy
-        self.r = r
+        self.id_src = src[0]
+        self.ccd = src[1]
+        self.rawx = src[2]
+        self.rawy = src[3]
+        self.rawr = src[4]
+        self.x = None
+        self.y = None
+        self.skyr = self.rawr * 64
+        self.ra = None
+        self.dec = None
+        self.r = self.skyr * 0.05 # arcseconds
 
-        self.x = self.rawy
-        self.y = self.rawx
 
+    def sky_coord(self, path, out) :
+        """
+        Calculate sky coordinates with the sas task edet2sky.
+        Return x, y, ra, dec
+        """
 
-        self.x = 400 - self.rawy
-        self.y = 64 - self.rawx
+        # Launching SAS commands, writing to output file
+        in_file  = path + 'PN_image.fits'
+        out_file = out + '/variable_sources.txt'
 
-        # "Left" side CCDs
-        if self.ccd >= 7 :
-            self.x = 400 - self.x
-            self.y = 64 - self.y
+        if self.id_src == 0 : s = '>'
+        else :      s = '>>'
 
-        if self.ccd in (2, 11) :
-            self.y += 64
-        elif self.ccd in (1, 10) :
-            self.y += 128
-        elif self.ccd in (4, 7) :
-            self.y += 192
-        elif self.ccd in (5, 8) :
-            self.y += 256
-        elif self.ccd in (6, 9) :
-            self.y += 320
+        command = """
+        export SAS_ODF=/home/ines/Documents/projects/EXOD/data/one_observation/0203542001;
+        export SAS_CCF=/home/ines/Documents/projects/EXOD/data/one_observation/0203542001/ccf.cif;
+        export HEADAS=/home/ines/astrosoft/heasoft-6.25/x86_64-pc-linux-gnu-libc2.27;
+        . $HEADAS/headas-init.sh;
+        . /home/ines/astrosoft/xmmsas_20180620_1732/setsas.sh;
+        #echo "# Variable source -{0}-" {1} {6}/.txt;
+        edet2sky datastyle=user inputunit=raw X={2} Y={3} ccd={4} calinfoset={5} -V 0 {1} {6}
+        """.format(self.id_src, s, self.rawx, self.rawy, self.ccd, in_file, out_file)
 
+        # Running command, writing to file
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+        time.sleep(0.5)
+
+        # Reading
+        det2sky = np.array([line.rstrip('\n') for line in open(out_file, 'r')])
+
+        for i in range(len(det2sky)) :
+            # Equatorial coordinates
+            self.ra, self.dec = det2sky[np.where(det2sky == '# RA (deg)   DEC (deg)')[0][0] + 1].split()
+
+            # Sky pixel coordinates
+            self.x, self.y    = det2sky[np.where(det2sky == '# Sky X        Y pixel')[0][0] + 1].split()
+
+        # Removing temporary output file
+        os.remove(out_file)
 
 ########################################################################
 
@@ -335,32 +361,27 @@ def ccd_config(data_matrix) :
 #                                                                      #
 ########################################################################
 
-def size(x, y, alpha) :
-    x0 = min(abs((x * cos (radians(alpha)) - y * sin(radians(alpha)))/(cos(2 * radians(alpha)))), abs((y * cos (radians(alpha) - pi/2) - x * sin(radians(alpha) - pi/2))/(cos(2 * radians(alpha) - pi))))
-    y0 = min(abs((y * cos (radians(alpha)) - x * sin(radians(alpha)))/(cos(2 * radians(alpha)))), abs((x * cos (radians(alpha) - pi/2) - y * sin(radians(alpha) - pi/2))/(cos(2 * radians(alpha) - pi))))
-    return x0, y0
-
-def rotation(x0, y0, alpha) :
-    x = x0 * cos(radians(alpha)) - y0 * sin(radians(alpha))
-    y = x0 * sin(radians(alpha)) + y0 * cos(radians(alpha))
-    return x, y
-
-def transformation(px, py, dmax, dmin, angle) :
+def data_transformation(data, header) :
     """
-    Function Performing geometrical transformations on the pixels of the observation
-    @param px    : rawx
-    @param py    : rawy
-    @param dmax  : extracted from the events files header: max x and y
-    @param dmin  : extracted from the events file header: min x and y
-    @param angle : rotation angle. header['PA_PNT']
-    @return      : transformed x, y positions
+    Performing geometrical transformations from raw coordinates to sky coordinates
+    @param data: variability matrix
+    @param header: header of the clean events file
+    @return: transformed variability data
     """
 
-    dsize = [(dmax[0] - dmin[0]), (dmax[1] - dmin[1])]
-    center = [dsize[0]/2 + dmin[0], dsize[1]/2 + dmin[1]]
-    x_max, y_max = size(dsize[0], dsize[1], angle)
+    # Header information
+    w = wcs.WCS(header)
+    w.wcs.crpix = [header['REFXCRPX'], header['REFYCRPX']]
+    w.wcs.cdelt = [header['REFXCDLT']/15, header['REFYCDLT']]
+    w.wcs.crval = [header['REFXCRVL']/15, header['REFYCRVL']]
+    w.wcs.ctype = [header['REFXCTYP'], header['REFYCTYP']]
+    angle = header['PA_PNT']
+    dlim = [header['REFXLMIN'], header['REFXLMAX'], header['REFYLMIN'], header['REFYLMAX']]
 
-    (x, y) = rotation((px - 200)*x_max/400, (py - 192)*y_max/384, angle)
-    x = x + center[0]
-    y = y + center[1]
-    return x, y
+    # Transformations
+    padX = (int((648-len(data))/2),)
+    padY = (int((648-len(data[0]))/2),)
+    dataR = np.flipud(nd.rotate(data, angle, reshape = True))
+    dataT = np.pad(dataR, (padX, padY), 'constant', constant_values=0)
+
+    return dataT

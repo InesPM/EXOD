@@ -2,29 +2,35 @@
 # coding=utf-8
 
 
-################################################################################
-#                                                                              #
-# EXOD - EPIC-pn XMM-Newton Outburst Detector                                  #
-#                                                                              #
-# DETECTOR utilities                                                           #
-#                                                                              #
-# Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com               #
-#                                                                              #
-################################################################################
+########################################################################
+#                                                                      #
+# EXOD - EPIC-pn XMM-Newton Outburst Detector                          #
+#                                                                      #
+# DETECTOR utilities                                                   #
+#                                                                      #
+# Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com       #
+#                                                                      #
+########################################################################
 """
 Implementation of variability-related procedures specified into the documentation
 """
+
+from math import *
 
 # Third-party imports
 
 import numpy as np
 from numpy import inf
 
-################################################################################
-#                                                                              #
-# Variability computation: procedure count_events                              #
-#                                                                              #
-################################################################################
+# Internal imports
+
+from file_utils import *
+
+########################################################################
+#                                                                      #
+# Variability computation: procedure count_events                      #
+#                                                                      #
+########################################################################
 
 def variability_computation(gti, time_interval, acceptable_ratio, start_time, end_time, data) :
 	"""
@@ -114,14 +120,15 @@ def variability_computation(gti, time_interval, acceptable_ratio, start_time, en
 
 	elif len(counted_events[0][0]) == 1 :
 		print("No data within the GTI")
+		
 	return V_mat
 
 
-################################################################################
-#                                                                              #
-# Detecting variable areas                                                     #
-#                                                                              #
-################################################################################
+########################################################################
+#                                                                      #
+# Detecting variable areas                                             #
+#                                                                      #
+########################################################################
 
 
 def box_computations(variability_matrix, x, y, box_size) :
@@ -146,7 +153,7 @@ def box_computations(variability_matrix, x, y, box_size) :
     return cpt
 
 
-################################################################################
+########################################################################
 
 
 def __add_to_detected_areas(x, y, box_size, detected_areas) :
@@ -180,7 +187,7 @@ def __add_to_detected_areas(x, y, box_size, detected_areas) :
 
 
 
-################################################################################
+########################################################################
 
 def variable_areas_detection(lower_limit, box_size, detection_level, variability_matrix) :
 	"""
@@ -212,7 +219,63 @@ def variable_areas_detection(lower_limit, box_size, detection_level, variability
 				if box_count > detection_level * ((box_size**2) * lower_limit) :
 					output=__add_to_detected_areas(i, j, box_size, output)
 					m += 1
-
 				j += 1
 
 	return output
+
+def variable_sources_position(variable_areas_matrix, obs, path_in, path_out) :
+	"""
+	Function computing the position of the detected varable sources.
+	@param variable_areas_matrix: variable_areas_detection output
+	@param obs: EPIC-pn OBSID. It will be written in the output file
+	@file_out: region file where the sources will be written
+	@return: astropy.table.Table object containing the source parameters
+	"""
+
+	sources = []
+	cpt_source = 0
+
+	# Computing source position
+	for ccd in range(12) :
+	    for source in variable_areas_matrix[ccd] :
+	        center_x = round(sum([p[0] for p in source]) / len(source), 2)
+	        center_y = round(sum([p[1] for p in source]) / len(source), 2)
+
+	        r = round(sqrt( (max([abs(p[0] - center_x) for p in source]))**2 + (max([abs(p[1] - center_y) for p in source]))**2 ), 2)
+
+	        # Avoiding bad pixels
+	        if [ccd, int(center_x)] not in [[4,11], [4,12], [4,13], [5,12], [10,28]] :
+	            cpt_source += 1
+	            sources.append([cpt_source, ccd+1, center_x, center_y, r])
+
+
+	# Making output table
+	source_table = Table(names=('ID', 'CCDNR', 'RAWX', 'RAWY', 'RAWR', 'X', 'Y', 'SKYR', 'RA', 'DEC', 'R'), dtype=('i2', 'i2', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8'))
+
+	# Head text
+	text = """# Region file format: DS9 version 4.0 global
+# XMM-Newton OBSID {0}
+# Instrument PN
+# EXOD variable sources
+
+global color=green font="times 8 normal roman"
+j2000
+
+""".format(obs)
+
+	for i in range(len(sources)) :
+		# Getting Source class
+		src = Source(sources[i])
+		src.sky_coord(path_in, path_out)
+		# Adding source to table
+		source_table.add_row([src.id_src, src.ccd, src.rawx, src.rawy, src.rawr, src.x, src.y, src.skyr, src.ra, src.dec, src.r])
+		# ds9 text
+		text = text + 'circle {0}, {1}, {2}" # text="{3}"\n'.format(src.ra, src.dec, src.r, src.id_src)
+
+	# Writing region file
+	file_out = path_out + '/ds9_variable_sources.reg'
+	file = open(file_out, 'w')
+	file.write(text)
+	file.close()
+
+	return source_table

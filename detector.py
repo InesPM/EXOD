@@ -79,6 +79,7 @@ def main_fct() :
     # Opening the output files
     log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detected_var_sources_f = open_files(args.out)
     output_log = open(args.ol, 'a')
+    original = sys.stdout
     sys.stdout = Tee(sys.stdout, log_f)
 
 # Replacing log_f.write by Tee class -> print
@@ -143,6 +144,9 @@ def main_fct() :
                 data_var_f.add_row([v_matrix[ccd][i][j], i+1, j+1, ccd+1])
     fits.writeto(var_f, data_var_f, header=head_var_f, overwrite=True)
 
+    # Aplying CCD configuration
+    data_v = ccd_config(v_matrix)
+
 ###
 # Detecting variable areas and sources
 ###
@@ -165,42 +169,10 @@ def main_fct() :
     with Pool(args.mta) as p:
         variable_areas = p.map(variable_areas_detection_partial, v_matrix)
 
-    # Conversion pixels CCD en pixels ciel
-    w = wcs.WCS(header)
-    w.wcs.crpix = [header['REFXCRPX'], header['REFYCRPX']]
-    w.wcs.cdelt = [header['REFXCDLT']/15, header['REFYCDLT']]
-    w.wcs.crval = [header['REFXCRVL']/15, header['REFYCRVL']]
-    w.wcs.ctype = [header['REFXCTYP'], header['REFYCTYP']]
-    angle = header['PA_PNT']
+    # Variavle sources
+    sources = variable_sources_position(variable_areas, obs, path, out)
 
-    # Writing sources to their files
-    cpt_source = 0
-
-    for ccd in range(12) :
-        for source in variable_areas[ccd] :
-
-            center_x = sum([p[0] for p in source]) / len(source)
-            center_y = sum([p[1] for p in source]) / len(source)
-
-            R = round(sqrt( (max([abs(p[0] - center_x) for p in source]))**2 + (max([abs(p[1] - center_y) for p in source]))**2 ))
-
-            position = Source(cpt_source, ccd, center_x, center_y, R)
-            (src_x, src_y) = transformation(position.x, position.y, dmax, dmin, angle)
-
-            ra, dec = w.wcs_pix2world(src_x, src_y, 1)
-            c   = SkyCoord(ra=ra*u.degree, dec=dec*u.degree)
-            ra  = '{:.0f} {:.0f} {:.2f}'.format(c.ra.dms[0], c.ra.dms[1], c.ra.dms[2])
-            dec = '{:.0f} {:.0f} {:.2f}'.format(c.dec.dms[0], c.dec.dms[1], c.dec.dms[2])
-
-            # Avoiding bad pixels
-            if [ccd, int(center_x)] not in [[4,11], [4,12], [4,13], [5,12], [10,28]] :
-                cpt_source += 1
-                detected_var_sources_f.write('{0};{1};{2};{3};{4};{5};{6}\n'.format(cpt_source, ccd + 1, center_x, center_y, R, ra, dec))
-
-            for p in source :
-                detected_var_areas_f.write('{0};{1};{2};{3}\n'.format(cpt_source, ccd + 1, p[0], p[1]))
-
-    print('Nb of sources\t{0}\n'.format(cpt_source))
+    print('Nb of sources\t{0}\n'.format(len(sources)))
 
 
 ###
@@ -209,7 +181,6 @@ def main_fct() :
 
     output_log.write('{0} {1} {2} {3}\n'.format(args.obs, cpt_source, args.dl, args.tw))
     output_log.close()
-    #print("# TOTAL EXECUTION TIME : %s seconds\n" % (time.time() - original_time))
     close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detected_var_sources_f)
 
 #############################################################################
