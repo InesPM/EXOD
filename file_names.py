@@ -23,6 +23,12 @@ REGION = "ds9_variable_sources.reg"
 OUTPUT_IMAGE = "variability.pdf"
 OUTPUT_IMAGE_SRCS = "sources.pdf"
 
+# Observation files
+
+CLEAN_FILE = "PN_clean.fits"
+GTI_FILE = "PN_gti.fits"
+IMG_FILE = "PN_image.fits"
+
 # HEADAS and SAS installation paths
 
 HEADAS = "/home/ines/astrosoft/heasoft-6.25/x86_64-pc-linux-gnu-libc2.27"
