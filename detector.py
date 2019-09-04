@@ -50,9 +50,9 @@ from renderer import *
 parser = argparse.ArgumentParser()
 
 # Path to files
-parser.add_argument("-evts", help="Name of the clean observation file", type=str, nargs='?', default='PN_clean.fits')
-parser.add_argument("-gti", help="Name of the GTI file", type=str, nargs='?', default='PN_gti.fits')
-parser.add_argument("-img", help="Name of the image file", type=str, nargs='?', default='PN_image.fits')
+parser.add_argument("-evts", help="Name of the clean observation file", type=str, nargs='?', default=FileNames.CLEAN_FILE)
+parser.add_argument("-gti", help="Name of the GTI file", type=str, nargs='?', default=FileNames.GTI_FILE)
+parser.add_argument("-img", help="Name of the image file", type=str, nargs='?', default=FileNames.IMG_FILE)
 parser.add_argument("-path", help="Path to the folder containing the observation files", type=str)
 parser.add_argument("-out", help="Path to the folder where the output files will be stored", default=None, type=str)
 
@@ -78,6 +78,8 @@ if args.path[-1] != '/' :
     args.path = args.path + '/'
 if args.out[-1] != '/' :
     args.out = args.out + '/'
+if args.out == None :
+    args.out = args.path + '{}_{}_{}_{}'.format(args.dl, args.tw, args.bs, args.gtr)
 args.evts = args.path + args.evts
 args.gti  = args.path + args.gti
 args.img  = args.path + args.img
