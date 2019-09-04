@@ -120,7 +120,7 @@ def variability_computation(gti, time_interval, acceptable_ratio, start_time, en
 
 	elif len(counted_events[0][0]) == 1 :
 		print("No data within the GTI")
-		
+
 	return V_mat
 
 
@@ -223,7 +223,7 @@ def variable_areas_detection(lower_limit, box_size, detection_level, variability
 
 	return output
 
-def variable_sources_position(variable_areas_matrix, obs, path_in, path_out) :
+def variable_sources_position(variable_areas_matrix, obs, path_out, reg_file, log_file, img_file) :
 	"""
 	Function computing the position of the detected varable sources.
 	@param variable_areas_matrix: variable_areas_detection output
@@ -266,16 +266,15 @@ j2000
 	for i in range(len(sources)) :
 		# Getting Source class
 		src = Source(sources[i])
-		src.sky_coord(path_in, path_out)
+		src.sky_coord(path_out, img_file, log_file)
 		# Adding source to table
 		source_table.add_row([src.id_src, src.ccd, src.rawx, src.rawy, src.rawr, src.x, src.y, src.skyr, src.ra, src.dec, src.r])
 		# ds9 text
 		text = text + 'circle {0}, {1}, {2}" # text="{3}"\n'.format(src.ra, src.dec, src.r, src.id_src)
 
 	# Writing region file
-	file_out = path_out + '/ds9_variable_sources.reg'
-	file = open(file_out, 'w')
-	file.write(text)
-	file.close()
+	reg_f = open(reg_file, 'w')
+	reg_f.write(text)
+	reg_f.close()
 
 	return source_table

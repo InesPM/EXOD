@@ -26,8 +26,11 @@ import subprocess
 
 from math import *
 from astropy.table import Table
+from astropy import wcs
+from astropy.io import fits
 import numpy as np
 import scipy.ndimage as nd
+import skimage
 
 # Internal imports
 
@@ -62,94 +65,50 @@ def open_files(folder_name) :
             exit(-1)
 
     # Declaring the files
-    log_f = None
-    info_f = None
-    var_f = None
-    var_per_tw_f = None
-    detected_var_areas_f = None
-    tws_f = None
+    log_file = None
+    var_file = None
+    reg_file = None
 
     # Creating the log file
     try:
-        log_file = open(folder_name + FileNames.LOG, "w+")
+        log_file = open(folder_name + FileNames.LOG, 'w+')
 
     except IOError as e:
         print("Error in creating log.txt.\nABORTING", file=sys.stderr)
         print(e, file=sys.stderr)
-        close_files(log_f, info_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f)
+        close_files(log_file, var_file, reg_file)
         print_help()
         exit(-1)
 
     # Creating the file to store variability per pixel
     try :
-        # variability_file = open(folder_name + FileNames.VARIABILITY, "w+")
-        # variability_file.write("# Variability for each pixel.\n")
-        # variability_file = Table(names=('VARIABILITY', 'RAWX', 'RAWY', 'CCDNR'))
-        variability_file = folder_name + FileNames.VARIABILITY
+        var_file = folder_name + FileNames.VARIABILITY
 
     except IOError as e:
-        print("Error in creating variability_file.csv.\nABORTING", file=sys.stderr)
+        print("Error in creating {0}.\nABORTING".format(FileNames.VARIABILITY), file=sys.stderr)
         print(e, file=sys.stderr)
-        close_files(log_f, info_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f)
+        close_files(log_file, var_file, reg_file)
         print_help()
         exit(-1)
 
-
-    # Creating the file to store variability per pixel per time window
+    # Creating the region file to store the position of variable sources
     try :
-        variability_per_tw_file = open(folder_name + FileNames.EVTS_PX_TW, "w+")
-        variability_per_tw_file.write("# Events count for each time window for each pixel.\n")
+        reg_file = folder_name + FileNames.REGION
 
     except IOError as e:
-        print("Error in creating events_count_per_px_per_tw.csv.\nABORTING", file=sys.stderr)
+        print("Error in creating {0}.\nABORTING".format(FileNames.REGION), file=sys.stderr)
         print(e, file=sys.stderr)
-        close_files(log_f, info_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f)
+        close_files(log_file, var_file, reg_file)
         print_help()
         exit(-1)
 
-    # Creating the file to store areas detected as variable
-    try :
-        detected_variable_areas_file = open(folder_name + FileNames.VARIABLE_AREAS, "w+")
-        detected_variable_areas_file.write("# SOURCE_NUMBER;CCD;RAWX;RAWY\n")
-
-    except IOError as e:
-        print("Error in creating detected_variable_areas_file.csv.\nABORTING", file=sys.stderr)
-        print(e, file=sys.stderr)
-        close_files(log_f, info_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f)
-        print_help()
-        exit(-1)
-
-    # Creating the file to store acceptable time windows
-    try :
-        time_windows_file = open(folder_name + FileNames.TIME_WINDOWS, "w+")
-        time_windows_file.write("# NUMBER;STARTING_TIME\n")
-
-    except IOError as e:
-        print("Error in creating time_windows_file.csv.\nABORTING", file=sys.stderr)
-        print(e, file=sys.stderr)
-        close_files(log_f, info_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f)
-        print_help()
-        exit(-1)
-
-    # Creating the file to store detected variable areas
-    try :
-        detected_variable_sources = open(folder_name + FileNames.VARIABLE_SOURCES, "w+")
-        detected_variable_sources.write("# SOURCE_NUMBER;CCD;RAWX;RAWY;RADIUS;RA;DEC\n")
-
-    except IOError as e:
-        print("Error in creating detected_variable_sources.csv.\nABORTING", file=sys.stderr)
-        print(e, file=sys.stderr)
-        close_files(log_f, info_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f)
-        print_help()
-        exit(-1)
-
-    return log_file, variability_file, variability_per_tw_file, detected_variable_areas_file, time_windows_file, detected_variable_sources
+    return log_file, var_file, reg_file
 
 
 ########################################################################
 
 
-def close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detected_var_sources_f) :
+def close_files(log_f, reg_f) :
     """
     Function closing all files.
     """
@@ -157,17 +116,8 @@ def close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detecte
     if log_f :
         log_f.close()
 
-    if var_per_tw_f :
-        var_per_tw_f.close()
-
-    if detected_var_areas_f :
-        detected_var_areas_f.close()
-
-    if tws_f :
-        tws_f.close()
-
-    if detected_var_sources_f:
-        detected_var_sources_f.close()
+    if reg_f :
+        reg_f.close()
 
 ########################################################################
 
@@ -183,8 +133,7 @@ class Tee(object):
             f.write(obj)
             f.flush() # If you want the output to be visible immediately
     def flush(self) :
-        for f in self.files:
-            f.flush()
+        pass
 
 ########################################################################
 
@@ -274,32 +223,36 @@ class Source(object):
         self.r = self.skyr * 0.05 # arcseconds
 
 
-    def sky_coord(self, path, out) :
+    def sky_coord(self, path, img, log_f) :
         """
         Calculate sky coordinates with the sas task edet2sky.
         Return x, y, ra, dec
         """
 
         # Launching SAS commands, writing to output file
-        in_file  = path + 'PN_image.fits'
-        out_file = out + '/variable_sources.txt'
+        out_file = path + 'variable_sources.txt'
+        # The out_file will be temporarily written to the output directory, then removed.
 
         if self.id_src == 0 : s = '>'
         else :      s = '>>'
 
-        command = """
-        export SAS_ODF=/home/ines/Documents/projects/EXOD/data/one_observation/0203542001;
-        export SAS_CCF=/home/ines/Documents/projects/EXOD/data/one_observation/0203542001/ccf.cif;
-        export HEADAS=/home/ines/astrosoft/heasoft-6.25/x86_64-pc-linux-gnu-libc2.27;
+        command = f"""
+        export SAS_ODF={path};
+        export SAS_CCF={path}ccf.cif;
+        export HEADAS={FileNames.HEADAS};
         . $HEADAS/headas-init.sh;
-        . /home/ines/astrosoft/xmmsas_20180620_1732/setsas.sh;
-        #echo "# Variable source -{0}-" {1} {6}/.txt;
-        edet2sky datastyle=user inputunit=raw X={2} Y={3} ccd={4} calinfoset={5} -V 0 {1} {6}
-        """.format(self.id_src, s, self.rawx, self.rawy, self.ccd, in_file, out_file)
+        . {FileNames.SAS};
+        #echo "# Variable source -{self.id_src}-" {s} {out_file};
+        edet2sky datastyle=user inputunit=raw X={self.rawx} Y={self.rawy} ccd={self.ccd} calinfoset={img} -V 0 {s} {out_file}
+        """
 
         # Running command, writing to file
         process = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+        log_f.write('\n * Source position *\n')
         time.sleep(0.5)
+        with open(out_file) as f:
+            for line in f:
+                log_f.write(line)
 
         # Reading
         det2sky = np.array([line.rstrip('\n') for line in open(out_file, 'r')])
@@ -370,18 +323,30 @@ def data_transformation(data, header) :
     """
 
     # Header information
-    w = wcs.WCS(header)
-    w.wcs.crpix = [header['REFXCRPX'], header['REFYCRPX']]
-    w.wcs.cdelt = [header['REFXCDLT']/15, header['REFYCDLT']]
-    w.wcs.crval = [header['REFXCRVL']/15, header['REFYCRVL']]
-    w.wcs.ctype = [header['REFXCTYP'], header['REFYCTYP']]
     angle = header['PA_PNT']
     dlim = [header['REFXLMIN'], header['REFXLMAX'], header['REFYLMIN'], header['REFYLMAX']]
 
-    # Transformations
-    padX = (int((648-len(data))/2),)
-    padY = (int((648-len(data[0]))/2),)
-    dataR = np.flipud(nd.rotate(data, angle, reshape = True))
-    dataT = np.pad(dataR, (padX, padY), 'constant', constant_values=0)
+    xproj = [header['TDMIN6'], header['TDMAX6']] # projected x limits
+    yproj = [header['TDMIN7'], header['TDMAX7']] # projected y limits
+    xlims = [header['TLMIN6'], header['TLMAX6']] # legal x limits
+    ylims = [header['TLMIN7'], header['TLMAX7']] # legal y limits
 
-    return dataT
+    # scaling factor
+    sx = 648 / (xlims[1] - xlims[0])
+    sy = 648 / (ylims[1] - ylims[0])
+    # pads (padding)
+    padX = (int((xproj[0] - xlims[0])*sx), int((xlims[1] - xproj[1])*sx))
+    padY = (int((yproj[0] - ylims[0])*sy), int((ylims[1] - yproj[1])*sy))
+    # shape (resizing)
+    pixX = 648 - (padX[0] + padX[1])
+    pixY = 648 - (padY[0] +padY[1])
+
+    # Transformations
+    ## Rotation
+    dataR = np.flipud(nd.rotate(data, angle, reshape = True))
+    ## Resizing
+    dataT = skimage.transform.resize(dataR, (pixY, pixX), mode='constant', cval=0.0) # xy reversed
+    ## Padding
+    dataP = np.pad(dataT, (padY, padX), 'constant', constant_values=0) # xy reversed
+
+    return dataP
