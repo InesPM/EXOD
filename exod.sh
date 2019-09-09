@@ -106,15 +106,15 @@ variabilitectron(){
 
   # File names
   path=$FOLDER/$obs
-  events_file=$path/PN_clean.fits
-  gti_file=$path/PN_gti.fits
+  events_file=PN_clean.fits
+  gti_file=PN_gti.fits
+  img_file=PN_image.fits
 
   ###
   # Variability computation
   ###
   # writing detector and renderer commands to file that will be run in parallel
-  echo "python3 -W"ignore" $SCRIPTS/detector.py $events_file $gti_file $path/${DL}_${TW}_${GTR}_${BS} -obs $obs -bs $BS -dl $DL -tw $TW -gtr $GTR -mta 1 -ol $FOLDER/variable_sources_${DL}_${TW}_${GTR}_${BS}" >> $FOLDER/process_det_${DL}_${TW}_${GTR}_${BS}
-  echo "python3 -W"ignore" $SCRIPTS/renderer.py $path/${DL}_${TW}_${GTR}_${BS} $events_file -obs $obs -tw $TW -dl $DL -bs $BS" >> $FOLDER/process_ren_${DL}_${TW}_${GTR}_${BS}
+  echo "python3 -W"ignore" $SCRIPTS/detector.py -evts $events_file -gti $gti_file -img $img_file -path $path -out $path/${DL}_${TW}_${GTR}_${BS} -bs $BS -dl $DL -tw $TW -gtr $GTR -mta 1 --render >> $FOLDER/process_det_${DL}_${TW}_${GTR}_${BS}"
   ((++count))
 }
 
