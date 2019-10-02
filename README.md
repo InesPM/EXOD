@@ -25,5 +25,5 @@ One can use the `exod_analysis.sh` script to download, filter and compute the va
 
 ```
 obs=0652250701
-bash /home/ines/Documents/projects/EXOD/EXOD_fits/exod_analysis.sh -o $obs -f $FOLDER -s $SCRIPTS
+bash $SCRIPTS/exod_analysis.sh -o $obs -f $FOLDER -s $SCRIPTS
 ```
