@@ -14,8 +14,16 @@ https://framagit.org/InesPM/Variabilitectron
 
 ## Tutorial
 
-If EXOD is cloned to 
+Let's set the path to where the scripts are located and where we want to store our data, for instance
 
 ```
 SCRIPTS=/path/EXOD
+FOLDER=/path/data
+```
+
+One can use the `exod_analysis.sh` script to download, filter and compute the variability with four sets of parameters. Let's try, for instance, with observation 0652250701:
+
+```
+obs=0652250701
+bash /home/ines/Documents/projects/EXOD/EXOD_fits/exod_analysis.sh -o $obs -f $FOLDER -s $SCRIPTS
 ```
