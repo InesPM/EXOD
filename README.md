@@ -11,3 +11,11 @@ If you use EXOD for your research, please acknowledge it by citing Pastor-Marazu
 Original project "Variabilitectron" created by Damien Wojtowicz. See previous versions:
 https://framagit.org/DWojtowicz/Variabilitectron
 https://framagit.org/InesPM/Variabilitectron
+
+## Tutorial
+
+If EXOD is cloned to 
+
+```
+SCRIPTS=/path/EXOD
+```
