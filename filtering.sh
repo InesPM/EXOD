@@ -1,17 +1,17 @@
 #!/bin/bash
 
-################################################################################
-#                                                                              #
-# EXOD - EPIC-pn XMM-Newton Outburst Detector                                  #
-#                                                                              #
-# Events file filtering                                                        #
-#                                                                              #
-# Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com               #
-#                                                                              #
-################################################################################
+########################################################################
+#                                                                      #
+# EXOD - EPIC-pn XMM-Newton Outburst Detector                          #
+#                                                                      #
+# Events file filtering                                                #
+#                                                                      #
+# Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com       #
+#                                                                      #
+########################################################################
 
 ###
-# Parsing arguments                                                            #
+# Parsing arguments                                                            
 ###
 
 # Default variables
@@ -53,11 +53,11 @@ title(){
   echo -e "\n\t  $message \n\t$x"
 }
 
-################################################################################
-#                                                                              #
-# Main programme                                                               #
-#                                                                              #
-################################################################################
+########################################################################
+#                                                                      #
+# Main programme                                                       #
+#                                                                      #
+########################################################################
 
 Title "Filtering observation $OBS"
 
@@ -105,7 +105,7 @@ tabgtigen table=$rate_file expression="RATE<=$RATE" gtiset=$gti_file -V 0
 # Cleaning events file
 evselect table=$org_file withfilteredset=Y filteredset=$events_file destruct=Y keepfilteroutput=T expression="#XMMEA_EP && gti($gti_file,TIME) && (PATTERN<=4) && (PI in [500:12000])" -V 0
 
-ds9 $events_file -bin factor 64 -scale log -cmap bb -mode region &
+#ds9 $events_file -bin factor 64 -scale log -cmap bb -mode region &
 
 # Creating image file
 evselect table=$events_file imagebinning=binSize imageset=$img_file withimageset=yes xcolumn=X ycolumn=Y ximagebinsize=80 yimagebinsize=80 -V 0
