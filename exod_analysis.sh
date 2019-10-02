@@ -37,10 +37,15 @@ case "$1" in
   -s|--scripts)           SCRIPTS=${2:-$SCRIPTS}
   shift; shift ;;
   # Forcing analysis 
-  -f|--force)             F=true
+  -f|--force)             F=${2:-true}
   shift; shift ;;
 esac
 done
+
+echo -e "\n"
+echo -e "\tOBSERVATION = ${obs}"
+echo -e "\tDIRECTORY   = ${DIR}"
+echo -e "\tSCRIPTS     = ${SCRIPTS}\n"
 
 ########################################################################
 #                                                                      #
@@ -80,22 +85,22 @@ waitForFinish()
 
 # Downloading files
 
-if [ -f $FOLDER/$obs/*PIEVLI.FTZ -a -f $FOLDER/$obs/*FBKTSR*.FTZ -a -f $FOLDER/$obs/*SUM.ASC ] && [ $F = false ]; then
+if [ -f $DIR/$obs/*PIEVLI.FTZ -a -f $DIR/$obs/*FBKTSR*.FTZ -a -f $DIR/$obs/*SUM.ASC ] && [ $F = false ]; then
   echo "Files downloaded. Skipping"
-else;
+else
 
   Title "DOWNLOADING FILES"
   bash $SCRIPTS/download_observation.sh $DIR $obs
 
 fi
 
-cd $FOLDER/$obs
+cd $DIR/$obs
 
 # Filtering events
 
 if [ -f PN_clean.fits -a -f PN_gti.fits -a -f PN_image.fits ] && [ $F = false ]; then
   echo "Files filtered. Skipping"
-else;
+else
 
   Title "FILTERING EVENTS"
   bash $SCRIPTS/filtering.sh -f $DIR -o $obs
@@ -108,28 +113,17 @@ Title "APPLYING DETECTOR"
 
 if [ -f PN_clean.fits -a -f PN_gti.fits -a -f PN_image.fits ] && [ $F = false ]; then
   echo "Variability computed. Rendering"
+  nv="--novar"
+else nv=""; fi
 
   # 8 100 3 1.0
-  python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 8 -tw 100 -gtr 1.0 -mta $CPUS --render
+  python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 8 -tw 100 -gtr 1.0 -mta $CPUS --render $nv
   # 7 30 3 1.0
-  python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 7 -tw 30 -gtr 1.0 -mta $CPUS --render
+  python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 7 -tw 30 -gtr 1.0 -mta $CPUS --render $nv
   # 6 10 3 1.0 
-  python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 6 -tw 10 -gtr 1.0 -mta $CPUS --render
+  python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 6 -tw 10 -gtr 1.0 -mta $CPUS --render $nv
   # 5 3 3 1.0
-  python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 5 -tw 3 -gtr 1.0 -mta $CPUS --render  
-
-else;
-
-  # 8 100 3 1.0
-  python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 8 -tw 100 -gtr 1.0 -mta $CPUS --render
-  # 7 30 3 1.0
-  python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 7 -tw 30 -gtr 1.0 -mta $CPUS --render
-  # 6 10 3 1.0 
-  python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 6 -tw 10 -gtr 1.0 -mta $CPUS --render
-  # 5 3 3 1.0
- python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 5 -tw 3 -gtr 1.0 -mta $CPUS --render
-
-fi
+  python3 -W"ignore" $SCRIPTS/detector.py -path $DIR/$obs -bs 3 -dl 5 -tw 3 -gtr 1.0 -mta $CPUS --render $nv
 
 # Rendering all
 

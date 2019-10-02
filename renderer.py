@@ -134,9 +134,9 @@ def render_variability_all(var_file0, var_file1, var_file2, var_file3, output_fi
 
         hdulist = fits.open(var_files[i])
 
-        data    = hdulist[0].data
-        sources = hdulist[1].data
-        header  = hdulist[0].header
+        data   = hdulist[0].data
+        src    = hdulist[1].data
+        header = hdulist[0].header
 
         hdulist.close()
 
