@@ -17,7 +17,7 @@ https://framagit.org/InesPM/Variabilitectron
 Let's set the path to where the scripts are located and where we want to store our data, for instance
 
 ```
-SCRIPTS=/path/EXOD
+SCRIPTS=/path/EXOD/scripts
 FOLDER=/path/data
 ```
 
