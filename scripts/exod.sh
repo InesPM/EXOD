@@ -73,6 +73,15 @@ title(){
   echo -e "\n\t  $message \n\t$x"
 }
 
+# Useful
+########################################################################
+
+var(){
+  x=$1
+  out=$(cat scripts/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
+  echo $out
+}
+
 waitForFinish()
 {
   STRING=$1;
@@ -106,9 +115,9 @@ variabilitectron(){
 
   # File names
   path=$FOLDER/$obs
-  events_file=PN_clean.fits
-  gti_file=PN_gti.fits
-  img_file=PN_image.fits
+  events_file=$path/$(var CLEAN_FILE)
+  gti_file=$path/$(var GTI_FILE)
+ img_file=$path/$(var IMG_FILE)
 
   ###
   # Variability computation

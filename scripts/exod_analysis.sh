@@ -65,6 +65,15 @@ title(){
   echo -e "\n\t  $message \n\t$x"
 }
 
+# Useful
+########################################################################
+
+var(){
+  x=$1
+  out=$(cat scripts/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
+  echo $out
+}
+
 waitForFinish()
 {
   STRING=$1;
@@ -111,7 +120,7 @@ fi
 
 Title "APPLYING DETECTOR"
 
-if [ -f PN_clean.fits -a -f PN_gti.fits -a -f PN_image.fits ] && [ $F = false ]; then
+if [ -f $(var CLEAN_FILE) -a -f $(var GTI_FILE) -a -f $(var IMG_FILE) ] && [ $F = false ]; then
   echo "Variability computed. Rendering"
   nv="--novar"
 else nv=""; fi

@@ -30,8 +30,9 @@ OUTPUT_IMAGE_ALL  = "variability_whole.pdf"
 CLEAN_FILE        = "PN_clean.fits"
 GTI_FILE          = "PN_gti.fits"
 IMG_FILE          = "PN_image.fits"
+RATE_FILE         = "PN_rate.fits"
 
-# HEADAS and SAS installation paths
+# software installation paths
 
 HEADAS = "/home/ines/astrosoft/heasoft-6.25/x86_64-pc-linux-gnu-libc2.27"
 SAS    = "/home/ines/astrosoft/xmmsas_20180620_1732/setsas.sh"

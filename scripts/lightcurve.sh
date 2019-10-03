@@ -50,7 +50,7 @@ output_log=$FOLDER/sources_variability_${DL}_${TW}_${GTR}_${BS}
 path=$FOLDER/$OBS
 
 # Style functions
-################################################################################
+########################################################################
 
 title1(){
   message=$1; i=0; x='===='
@@ -68,12 +68,20 @@ title3(){
   message="$1 $OBS"; echo -e "\n # $message"
 }
 
+# Useful
+########################################################################
 
-################################################################################
-#                                                                              #
-# Preliminaries                                                                #
-#                                                                              #
-################################################################################
+var(){
+  x=$1
+  out=$(cat scripts/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
+  echo $out
+}
+
+########################################################################
+#                                                                      #
+# Preliminaries                                                        #
+#                                                                      #
+########################################################################
 
 #read arguments
 start=`date +%s`
@@ -89,9 +97,9 @@ echo -e "\tGOOD TIME RATIO = ${GTR}"
 echo -e "\tBOX SIZE        = ${BS}"
 
 # Selecting the files and paths
-clean_file=$path/PN_clean.fits
-gti_file=$path/PN_gti.fits
-img_file=$path/PN_image.fits
+clean_file=$path/$(var CLEAN_FILE)
+gti_file=$path/$(var GTI_FILE)
+img_file=$path/$(var IMG_FILE)
 nosrc_file=$path/PN_sourceless.fits
 sum_file=$(ls $path/*SUM.ASC)
 fbk_file=$(ls $path/*$OBS*PNS*FBKTSR*)
@@ -103,9 +111,9 @@ cd $path
 export SAS_ODF=$path
 export SAS_CCF=$path/ccf.cif
 export SAS_CCFPATH=/opt/ccfs
-export HEADAS=/usr/local/heasoft-6.22.1/x86_64-unknown-linux-gnu-libc2.19/
+export HEADAS=$(var HEADAS)
 . $HEADAS/headas-init.sh
-. /usr/local/SAS/xmmsas_20170719_1539/setsas.sh
+. $(var SAS)
 
 if [ ! -f $path/ccf.cif ]; then cifbuild; fi
 

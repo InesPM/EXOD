@@ -53,6 +53,15 @@ title(){
   echo -e "\n\t  $message \n\t$x"
 }
 
+# Useful
+########################################################################
+
+var(){
+  x=$1
+  out=$(cat scripts/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
+  echo $out
+}
+
 ########################################################################
 #                                                                      #
 # Main programme                                                       #
@@ -71,9 +80,9 @@ title "Preliminaries"
 cd $path
 export SAS_ODF=$path
 export SAS_CCF=$path/ccf.cif
-export HEADAS=/home/ines/astrosoft/heasoft-6.25/x86_64-pc-linux-gnu-libc2.27
+export HEADAS=$(var HEADAS)
 . $HEADAS/headas-init.sh
-. /home/ines/astrosoft/xmmsas_20180620_1732/setsas.sh
+. $(var SAS)
 
 cifbuild
 
@@ -85,10 +94,10 @@ title "Cleaning events file"
 
 # File names
 org_file=$(ls $path/*$OBS*PIEVLI*)
-events_file=$path/PN_clean.fits
-gti_file=$path/PN_gti.fits
-rate_file=$path/PN_rate.fits
-img_file=$path/PN_image.fits
+clean_file=$path/$(var CLEAN_FILE)
+gti_file=$path/$(var GTI_FILE)
+img_file=$path/$(var IMG_FILE)
+rate_file=$path/$(var RATE_FILE)
 
 # Creating GTI
 evselect table=$org_file withrateset=Y rateset=$rate_file maketimecolumn=Y timebinsize=100 makeratecolumn=Y expression='#XMMEA_EP && (PI in [10000:12000]) && (PATTERN==0)' -V 0
