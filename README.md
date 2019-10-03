@@ -30,10 +30,4 @@ bash $SCRIPTS/exod_analysis.sh -o $obs -f $FOLDER -s $SCRIPTS
 The whole process should take a few minutes, and it depends on the duration of the observation.
 An example of the output of these commands can be found in the folder `examples`.
 
-![variability](../master/example/variability_whole.pdf)
-
-<object data="https://github.com/InesPM/EXOD/blob/master/example/variability_whole.pdf" type="application/pdf" width="700px" height="700px">
-    <embed src="https://github.com/InesPM/EXOD/blob/master/example/variability_whole.pdf">
-        <p>This browser does not support PDFs. Please download the PDF to view it: <a href="http://yoursite.com/the.pdf">Download PDF</a>.</p>
-    </embed>
-</object>
+![variability](../master/example/variability_whole.png)
