@@ -1,0 +1,8 @@
+# Region file format: DS9 version 4.0 global
+# XMM-Newton OBSID 0124710801
+# Instrument PN
+# EXOD variable sources
+
+global color=green font="times 8 normal roman"
+j2000
+

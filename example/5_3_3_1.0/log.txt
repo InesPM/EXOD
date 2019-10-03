@@ -1,0 +1,5 @@
+ Checking if variability has been computed.
+ Using existing variability file /home/ines/Documents/projects/EXOD/data/one_observation/0124710801/5_3_3_1.0/variability_file.fits
+ Rendering variability image	    0.01 s
+ # Total execution time OBS None : 2.07 s
+
