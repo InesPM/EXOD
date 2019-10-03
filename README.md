@@ -30,4 +30,6 @@ bash $SCRIPTS/exod_analysis.sh -o $obs -f $FOLDER -s $SCRIPTS
 The whole process should take a few minutes, and it depends on the duration of the observation.
 An example of the output of these commands can be found in the folder `examples`.
 
+As the render_all.py output shows, one variable source has been detected with TW=100 s, DL=8, bs=3.
+
 ![variability](../master/example/variability_whole.png)
