@@ -32,4 +32,6 @@ An example of the output of these commands can be found in the folder `examples`
 
 As the render_all.py output shows, one variable source has been detected with TW=100 s, DL=8, bs=3.
 
+
+
 ![variability](../master/example/variability_whole.png)
