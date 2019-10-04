@@ -242,13 +242,14 @@ class Source(object):
         export HEADAS={FileNames.HEADAS};
         . $HEADAS/headas-init.sh;
         . {FileNames.SAS};
-        #echo "# Variable source -{self.id_src}-" {s} {out_file};
+        echo "# Variable source {self.id_src}"; #{s} {out_file};
         edet2sky datastyle=user inputunit=raw X={self.rawx} Y={self.rawy} ccd={self.ccd} calinfoset={img} -V 0 {s} {out_file}
         """
 
         # Running command, writing to file
         process = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
-        log_f.write('\n * Source position *\n')
+        #log_f.write('\n * Source position *\n')
+        log_f.write(" * Variable source {0} * ".format(self.id_src))
         time.sleep(0.5)
         with open(out_file) as f:
             for line in f:

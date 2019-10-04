@@ -73,7 +73,7 @@ title3(){
 
 var(){
   x=$1
-  out=$(cat scripts/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
+  out=$(cat $SCRIPTS/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
   echo $out
 }
 

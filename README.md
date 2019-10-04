@@ -15,7 +15,7 @@ https://framagit.org/InesPM/Variabilitectron
 ## Tutorial
 
 Let's set the path to where the scripts are located and where we want to store our data, for instance
-
+bash $SCRIPTS/exod_analysis.sh -o $obs -f $FOLDER -s $SCRIPTS
 ```
 SCRIPTS=/path/EXOD/scripts
 FOLDER=/path/data
@@ -25,7 +25,7 @@ One can use the `exod_analysis.sh` script to download, filter and compute the va
 
 ```
 obs=0124710801
-bash $SCRIPTS/exod_analysis.sh -o $obs -f $FOLDER -s $SCRIPTS
+bash $SCRIPTS/exod_analysis.sh -o $obs -d $FOLDER -s $SCRIPTS
 ```
 The whole process should take a few minutes, and it depends on the duration of the observation.
 An example of the output of these commands can be found in the folder `examples`.

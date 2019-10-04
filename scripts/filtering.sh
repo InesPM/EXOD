@@ -21,11 +21,13 @@ FOLDER=/mnt/data/Ines/DR5
 # Input variables
 while [[ $# -gt 0 ]]; do
 case "$1" in
-  -f|--folder)           FOLDER=${2:-$FOLDER}
-  shift; shift ;;
   -o|-obs|--observation) OBS=${2}
   shift; shift ;;
   -r|--rate)             RATE=${2:-$RATE}
+  shift; shift ;;
+  -f|--folder)           FOLDER=${2:-$FOLDER}
+  shift; shift ;;
+  -s|--scripts)           SCRIPTS=${2:-$SCRIPTS}
   shift; shift ;;
 esac
 done
@@ -58,7 +60,7 @@ title(){
 
 var(){
   x=$1
-  out=$(cat scripts/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
+  out=$(cat $SCRIPTS/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
   echo $out
 }
 

@@ -70,7 +70,7 @@ title(){
 
 var(){
   x=$1
-  out=$(cat scripts/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
+  out=$(cat $SCRIPTS/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
   echo $out
 }
 
@@ -112,7 +112,7 @@ if [ -f PN_clean.fits -a -f PN_gti.fits -a -f PN_image.fits ] && [ $F = false ];
 else
 
   Title "FILTERING EVENTS"
-  bash $SCRIPTS/filtering.sh -f $DIR -o $obs
+  bash $SCRIPTS/filtering.sh -f $DIR -o $obs -s $SCRIPTS
 
 fi
 
