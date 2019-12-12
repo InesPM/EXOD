@@ -15,6 +15,7 @@
 # Built-in imports
 
 from math import *
+from os import path
 from os.path import sys
 
 # Third-party imports
@@ -33,30 +34,53 @@ from astropy.io import fits
 ###
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-src", help="Path to the source's lightcurve fits file (lccorr product)", nargs='?', type=str)
-parser.add_argument("-bgd", help="Path to the background's lightcurve fits file (if no lccorr product)", nargs='?', type=str, default=None)
+parser.add_argument("-path", dest="path", help="Path to the observation files", nargs='?', type=str)
+parser.add_argument("-name", dest="name", help="Source name", nargs='?', type=str)
+parser.add_argument("-obs", help="Observation identifier", nargs='?', type=str, default="")
+parser.add_argument("-src", help="Path to the source's lightcurve fits file", nargs='?', type=str, default=None)
+parser.add_argument("-bgd", help="Path to the background's lightcurve fits file", nargs='?', type=str, default=None)
 parser.add_argument("-gti", help="Path to the GTI of the observation", nargs='?', type=str, default=None)
-parser.add_argument("-mode", dest="mode", help="Plot style: monochrome / color", nargs='?', type=str, default="monochrome")
-parser.add_argument("-dtnb", help="Sampling time of the lightcurve", nargs='?', default=100, type=float)
-parser.add_argument("-outdir", help="Path to the output directory", nargs='?', default=".", type=str)
-parser.add_argument("-name", help="Name of the source", nargs='?', default=None, type=str)
-parser.add_argument("-Pcs", help="Chi square probability of constancy", nargs='?', default=None, type=str)
-parser.add_argument("-PKS", help="Kolmogorov-Smirnov probability of constancy", nargs='?', default=None, type=str)
-parser.add_argument("-obs", help="Observation number", nargs='?', default=None, type=str)
-parser.add_argument("-id", help="Id. of the variable source", nargs='?', default=None, type=str)
-
+parser.add_argument("-tw", help="Time window", nargs='?', type=int, default=100)
+parser.add_argument("-n", help="Lightcurve number", nargs='?', type=str, default="")
+parser.add_argument("-pcs", dest="pcs", help="Chi-square probability of constancy", nargs='?', type=float, default=None)
+parser.add_argument("-pks", dest="pks", help="Kolmogorov-Smirnov probability of constancy", nargs='?', type=float, default=None)
+parser.add_argument("-mode", dest="mode", help="Plot style: monochrome / medium / color", nargs='?', type=str, default="medium")
 args = parser.parse_args()
 
+###
 # Defining variables
+###
 
-input=(args.src).split("/")
-#obs=input[-1][:10]
-obs='0770380401'
-#src=input[-1][11:25].replace("_", "+")
-src='J113407+005223'
-#tw = float((input[-1].split("_"))[-1].replace(".lc", ""))
-dt = 3
-out=(input[-1][:25] + "_lc_{0}.pdf".format(dt))
+# Path
+if args.path[-1] == '/' :
+    args.path = args.path[:-1]
+
+# Source and background files
+if args.src == None :
+    lccorr = '{0}/{1}/lcurve_{2}/{3}_lccorr_{2}.lc'.format(args.path, args.obs, args.tw, args.name)
+    print(args.name)
+    if path.exists(lccorr) :
+        args.src = lccorr
+    else : 
+        args.src = '{0}/{1}/lcurve_{2}/{3}_lc_{2}_src.lc'.format(args.path, args.obs, args.tw, args.name)
+        args.bgd = '{0}/{1}/lcurve_{2}/{3}_lc_{2}_bgd.lc'.format(args.path, args.obs, args.tw, args.src)
+        if not path.exists(args.name) :
+            print('ERROR: Source File {0} does not exist'.format(args.src))
+            sys.exit()
+        if not path.exists(args.name) :
+            print('ERROR: Background File {0} does not exist'.format(args.bgd))
+            sys.exit()
+        
+# GTI file
+if args.gti == None :
+    args.gti = '{0}/{1}/PN_gti.fits'.format(args.path, args.obs)
+    if not path.exists(args.gti) :
+        print('ERROR: File {0} does not exist'.format(args.gti))
+        sys.exit()
+        
+# Output file
+src = (args.name).replace("_", "+")
+out='{0}/{1}/lcurve_{2}/{3}_lc_{2}.pdf'.format(args.path, args.obs, args.tw, args.name)
 print(out)
 
 ###
@@ -80,7 +104,7 @@ tf     = time[-1]
 time   = time - tstart
 
 # Background
-if args.bgd != "" :
+if args.bgd != None :
     hdu_bgd = fits.open(args.bgd)
     data_bgd    = hdu_bgd[1].data
     head_bgd    = hdu_bgd[1].header
@@ -96,7 +120,7 @@ if args.bgd != "" :
                 cts[t_s] == cts[t_s] - cts_bgd[t_b]
 
 # GTI
-if args.gti != "" :
+if args.gti != None :
     hdulist_gti = fits.open(args.gti)
     data_gti    = hdulist_gti[1].data
     hdulist_gti.close()
@@ -172,7 +196,6 @@ else :
 ###
 
 #seaborn-colorblind
-#color = ['#0072B2', '#009E73', '#D55E00', '#CC79A7', '#F0E442', '#56B4E9']
 color = ['#01b4bc', '#009E73', '#D55E00', '#fa5457', '#f6d51f', '#56B4E9']
 rcParams['font.family'] = 'serif'
 
@@ -219,15 +242,17 @@ elif "colo" in args.mode :
     if len(data_gti) > 1 :
         for i in range(len(data_gti)) :
             ax.axvspan(start_gti[i], stop_gti[i], alpha=0.2, color=color[4])
-#plt.plot(time[index], cts[index], 'x', color=color[1], zorder=5)
 # Labels
 #plt.legend(loc='upper right', fontsize=10)
 plt.xlabel("Time (s)", fontsize=16)
 plt.ylabel("counts s$^{-1}$", fontsize=16)
 # Text
 plt.text(0.03, 0.90, args.n, transform = ax.transAxes, fontsize=16)
-plt.text(0.1, 0.90, "OBS " + obs, transform = ax.transAxes, fontsize=16)
+plt.text(0.1, 0.90, "OBS {0}".format(args.obs), transform = ax.transAxes, fontsize=16)
 plt.text(0.1, 0.80, src, transform = ax.transAxes, fontsize=16)
+# Probabilities of constancy
+plt.text(0.95, 0.90, r"P($\chi^2$) = {0:.2e} ".format(args.pcs), horizontalalignment='right', transform = ax.transAxes, fontsize=16)
+plt.text(0.95, 0.80, r"P(KS) = {0:.2e} ".format(args.pks), horizontalalignment='right', transform = ax.transAxes, fontsize=16)
 # Setup
 plt.xlim(xmin, xmax)
 plt.ylim(ymin, ymax)
@@ -237,5 +262,5 @@ plt.minorticks_on()
 ax.yaxis.set_ticks_position('both')
 ax.xaxis.set_ticks_position('both')
 plt.tick_params(axis='both', which='both', direction='in', labelsize=14)
-#plt.savefig(out, pad_inches=0, bbox_inches='tight')
-plt.show()
+plt.savefig(out, pad_inches=0, bbox_inches='tight')
+#plt.show()

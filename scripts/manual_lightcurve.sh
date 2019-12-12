@@ -19,7 +19,7 @@
 # Default variables
 DL=8 ; TW=100 ; GTR=1.0 ; BS=3; ID=1
 # Default folders
-FOLDER=/mnt/data/Ines/DR5
+FOLDER=/mnt/data/Ines/data/DR5
 SCRIPTS=/mnt/data/Ines/progs
 
 # Input variables
@@ -46,7 +46,7 @@ case "$1" in
 esac
 done
 
-output_log=$FOLDER/sources_variability_${DL}_${TW}_${GTR}_${BS}
+output_log=$FOLDER/excluded_auto/sources_variability_${DL}_${TW}_${GTR}_${BS}
 path=$FOLDER/$OBS
 
 ###
@@ -76,6 +76,8 @@ input(){
 }
 
 ################################################################################
+
+start=`date +%s`
 
 title1 "Lightcurve Obs. $OBS Src. $ID"
 
@@ -217,9 +219,7 @@ P_KS=$(echo $P | sed "s/.*Kolm.-Smir. Prob of constancy //" |  sed "s/ (0 means.
 echo -e "Probabilities of constancy : \n\tP_chisq = $P_chisq\n\tP_KS    = $P_KS"
 
 title3 "lcurve"
-python3 $SCRIPTS/lcurve.py -src $path_out/${src}_lc_${TW}_src.lc -bgd $path_out/${src}_lc_${TW}_bgd.lc -gti $path/PN_gti.fits -dtnb $TW -outdir $path_out -name $src -Pcs $P_chisq -PKS $P_KS -obs $OBS -id $ID
-
-echo -e " # Source $path_out/${OBS}_${src}_lc_${TW}.pdf"
+python3 $SCRIPTS/lcurve.py -path $FOLDER -obs $OBS -name $src -tw $TW -mode medium -pcs $P_chisq -pks $P_KS -n $ID
 
 end=`date +%s`
 runtime=$((end-start))
