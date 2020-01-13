@@ -27,7 +27,7 @@ case "$1" in
   shift; shift ;;
   -f|--folder)           FOLDER=${2:-$FOLDER}
   shift; shift ;;
-  -s|--scripts)           SCRIPTS=${2:-$SCRIPTS}
+  -s|--scripts)          SCRIPTS=${2:-$SCRIPTS}
   shift; shift ;;
 esac
 done
@@ -101,6 +101,12 @@ gti_file=$path/$(var GTI_FILE)
 img_file=$path/$(var IMG_FILE)
 rate_file=$path/$(var RATE_FILE)
 
+echo $org_file
+echo $clean_file
+echo $gti_file
+echo $img_file
+echo $rate_file
+
 # Creating GTI
 evselect table=$org_file withrateset=Y rateset=$rate_file maketimecolumn=Y timebinsize=100 makeratecolumn=Y expression='#XMMEA_EP && (PI in [10000:12000]) && (PATTERN==0)' -V 0
 
@@ -114,7 +120,7 @@ echo "Creating Good Time Intervals with threshold RATE=$RATE"
 tabgtigen table=$rate_file expression="RATE<=$RATE" gtiset=$gti_file -V 0
 
 # Cleaning events file
-evselect table=$org_file withfilteredset=Y filteredset=$events_file destruct=Y keepfilteroutput=T expression="#XMMEA_EP && gti($gti_file,TIME) && (PATTERN<=4) && (PI in [500:12000])" -V 0
+evselect table=$org_file withfilteredset=Y filteredset=$clean_file destruct=Y keepfilteroutput=T expression="#XMMEA_EP && gti($gti_file,TIME) && (PATTERN<=4) && (PI in [500:12000])" -V 0
 
 #ds9 $events_file -bin factor 64 -scale log -cmap bb -mode region &
 
