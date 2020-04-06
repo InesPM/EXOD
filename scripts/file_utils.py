@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
 # coding=utf-8
-
 
 ########################################################################
 #                                                                      #
@@ -17,6 +15,7 @@ Various resources for both detector and renderer
 # Built-in imports
 
 import sys
+sys.path.append('/home/ines/anaconda3/lib/skimage')
 import os
 import time
 from functools import partial
@@ -327,10 +326,10 @@ def data_transformation(data, header) :
     angle = header['PA_PNT']
     dlim = [header['REFXLMIN'], header['REFXLMAX'], header['REFYLMIN'], header['REFYLMAX']]
 
-    xproj = [header['TDMIN6'], header['TDMAX6']] # projected x limits
-    yproj = [header['TDMIN7'], header['TDMAX7']] # projected y limits
-    xlims = [header['TLMIN6'], header['TLMAX6']] # legal x limits
-    ylims = [header['TLMIN7'], header['TLMAX7']] # legal y limits
+    xproj = [float(header['TDMIN6']), float(header['TDMAX6'])] # projected x limits
+    yproj = [float(header['TDMIN7']), float(header['TDMAX7'])] # projected y limits
+    xlims = [float(header['TLMIN6']), float(header['TLMAX6'])] # legal x limits
+    ylims = [float(header['TLMIN7']), float(header['TLMAX7'])] # legal y limits
 
     # scaling factor
     sx = 648 / (xlims[1] - xlims[0])
