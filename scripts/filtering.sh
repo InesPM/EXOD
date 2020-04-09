@@ -17,6 +17,7 @@
 # Default variables
 RATE=0.5
 FOLDER=/mnt/data/Ines/DR5
+INST=PN
 
 # Input variables
 while [[ $# -gt 0 ]]; do
@@ -24,6 +25,8 @@ case "$1" in
   -o|-obs|--observation) OBS=${2}
   shift; shift ;;
   -r|--rate)             RATE=${2:-$RATE}
+  shift; shift ;;
+  -i|--instrument)       INST=${2:-$INST}
   shift; shift ;;
   -f|--folder)           FOLDER=${2:-$FOLDER}
   shift; shift ;;
@@ -34,6 +37,7 @@ done
 
 echo -e "\tFOLDER      = ${FOLDER}"
 echo -e "\tOBSERVATION = ${OBS}"
+echo -e "\tINSTRUMENT  = ${INST}"
 echo -e "\tRATE        = ${RATE}"
 
 
@@ -86,7 +90,7 @@ export HEADAS=$(var HEADAS)
 . $HEADAS/headas-init.sh
 . $(var SAS)
 
-cifbuild
+if [ ! -f $path/ccf.cif ]; then cifbuild; fi
 
 ###
 # Filtering
@@ -95,37 +99,64 @@ cifbuild
 title "Cleaning events file"
 
 # File names
-org_file=$(ls $path/*$OBS*PIEVLI*)
-clean_file=$path/$(var CLEAN_FILE)
-gti_file=$path/$(var GTI_FILE)
-img_file=$path/$(var IMG_FILE)
-rate_file=$path/$(var RATE_FILE)
+if [ "$INST" == "PN" ]; then
+  org_file=$(ls $path/*${OBS}PN*PIEVLI*)
+  clean_file=$path/$(var CLEAN_FILE)
+  gti_file=$path/$(var GTI_FILE)
+  img_file=$path/$(var IMG_FILE)
+  rate_file=$path/$(var RATE_FILE)
+  l=P
 
-echo $org_file
-echo $clean_file
-echo $gti_file
-echo $img_file
-echo $rate_file
+elif [ "$INST" == "M1" ]; then
+  org_file=$(ls $path/*${OBS}M1*MIEVLI*)
+  clean_file=$path/M1_clean.fits
+  gti_file=$path/$(var GTI_FILE)
+  img_file=$path/M1_image.fits
+  rate_file=$path/$(var RATE_FILE)
+  l=M
+
+elif [ "$INST" == "M2" ]; then
+  org_file=$(ls $path/*${OBS}M2*MIEVLI*)
+  clean_file=$path/M2_clean.fits
+  gti_file=$path/$(var GTI_FILE)
+  img_file=$path/M2_image.fits
+  rate_file=$path/$(var RATE_FILE)
+  l=M
+
+else
+  echo "ERROR: Instrument not recognized"
+  exit
+fi
+
+echo -e "\tRAW FILE   = ${org_file}"
+echo -e "\tCLEAN FILE = ${clean_file}"
+echo -e "\tGTI FILE   = ${gti_file}"
+echo -e "\tIMAGE FILE = ${img_file}"
+echo -e "\tRATE FILE  = ${rate_file}"
 
 # Creating GTI
-evselect table=$org_file withrateset=Y rateset=$rate_file maketimecolumn=Y timebinsize=100 makeratecolumn=Y expression='#XMMEA_EP && (PI in [10000:12000]) && (PATTERN==0)' -V 0
+if [ "$INST" == "PN" ]; then 
+  title "Creating GTI"
 
-if [[ $RATE != [0-9]* ]]; then
-  echo "Opening PN_rate.fits" 
-  fv $rate_file &
-  read -p "Choose the GTI cut rate : " RATE
+  evselect table=$org_file withrateset=Y rateset=$rate_file maketimecolumn=Y timebinsize=100 makeratecolumn=Y expression='#XMMEA_EP && (PI in [10000:12000]) && (PATTERN==0)' -V 0
+
+  if [[ $RATE != [0-9]* ]]; then
+    echo "Opening PN_rate.fits" 
+    fv $rate_file &
+    read -p "Choose the GTI cut rate : " RATE
+  fi
+  echo "Creating Good Time Intervals with threshold RATE=$RATE"
+
+  tabgtigen table=$rate_file expression="RATE<=$RATE" gtiset=$gti_file -V 0
 fi
-echo "Creating Good Time Intervals with threshold RATE=$RATE"
-
-tabgtigen table=$rate_file expression="RATE<=$RATE" gtiset=$gti_file -V 0
 
 # Cleaning events file
-evselect table=$org_file withfilteredset=Y filteredset=$clean_file destruct=Y keepfilteroutput=T expression="#XMMEA_EP && gti($gti_file,TIME) && (PATTERN<=4) && (PI in [500:12000])" -V 0
+evselect table=$org_file withfilteredset=Y filteredset=$clean_file destruct=Y keepfilteroutput=T expression="#XMMEA_E$l && gti($gti_file,TIME) && (PATTERN<=4) && (PI in [500:12000])" -V 0
 
 #ds9 $events_file -bin factor 64 -scale log -cmap bb -mode region &
 
 # Creating image file
-evselect table=$events_file imagebinning=binSize imageset=$img_file withimageset=yes xcolumn=X ycolumn=Y ximagebinsize=80 yimagebinsize=80 -V 0
+evselect table=$clean_file imagebinning=binSize imageset=$img_file withimageset=yes xcolumn=X ycolumn=Y ximagebinsize=80 yimagebinsize=80 -V 0
 
 echo > $path/PN_processing.log "Rate: $RATE"
 echo "The end" 
