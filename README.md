@@ -14,19 +14,26 @@ https://framagit.org/InesPM/Variabilitectron
 
 ## Tutorial
 
-Let's set the path to where the scripts are located and where we want to store our data, for instance
-bash $SCRIPTS/exod_analysis.sh -o $obs -f $FOLDER -s $SCRIPTS
+Let's set some useful parameters; the path to where the scripts are located and where we want to store our data, as well as the observation ID we want to analyse:
 ```
 SCRIPTS=/path/EXOD/scripts
 FOLDER=/path/data
+obs=0652250701
+```
+Next we will download the raw data we need for the variability analysis, and then filter the observation:
+```
+bash $SCRIPTS/download_observation.sh $FOLDER $obs
+bash $SCRIPTS/filtering.sh -f $FOLDER -o $obs
+```
+Now we are ready to perform the variability analysis:
+```
+python3 -W"ignore" $SCRIPTS/detector.py -path $FOLDER/$obs --render --ds9 --ds9 -tw 100 -dl 8 -bs 3
+```
+If at least a variable source has been detcted, we can get its lightcurve and probability of constancy as follows:
+```
+bash $SCRIPTS/lightcurve.sh -f $FOLDER -s $SCRIPTS -o $obs -dl 8 -tw 100 -gtr 1.0 -bs 3 -id 1
 ```
 
-One can use the `exod_analysis.sh` script to download, filter and compute the variability with four sets of parameters. Let's try, for instance, with observation 0652250701:
-
-```
-obs=0124710801
-bash $SCRIPTS/exod_analysis.sh -o $obs -d $FOLDER -s $SCRIPTS
-```
 The whole process should take a few minutes, and it depends on the duration of the observation.
 An example of the output of these commands can be found in the folder `examples`.
 
