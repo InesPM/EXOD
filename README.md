@@ -29,7 +29,7 @@ Now we are ready to perform the variability analysis:
 ```
 python3 -W"ignore" $SCRIPTS/detector.py -path $FOLDER/$obs --render --ds9 --ds9 -tw 100 -dl 8 -bs 3
 ```
-If at least a variable source has been detcted, we can get its lightcurve and probability of constancy as follows:
+If at least a variable source has been detected, we can get its lightcurve and probability of constancy as follows:
 ```
 bash $SCRIPTS/lightcurve.sh -f $FOLDER -s $SCRIPTS -o $obs -dl 8 -tw 100 -gtr 1.0 -bs 3 -id 1
 ```
