@@ -11,12 +11,13 @@
 ########################################################################
 
 ###
-# Parsing arguments                                                            
+# Parsing arguments
 ###
 
 # Default variables
 RATE=0.5
-FOLDER=/mnt/data/Ines/DR5
+FOLDER=/home/ines/data
+SCRIPTS=/home/ines/EXOD/scripts
 INST=PN
 
 # Input variables
@@ -35,13 +36,8 @@ case "$1" in
 esac
 done
 
-echo -e "\tFOLDER      = ${FOLDER}"
-echo -e "\tOBSERVATION = ${OBS}"
-echo -e "\tINSTRUMENT  = ${INST}"
-echo -e "\tRATE        = ${RATE}"
-
-
 path=$FOLDER/$OBS
+log_file=$path/PN_processing.log
 
 ###
 # Defining functions
@@ -68,6 +64,12 @@ var(){
   echo $out
 }
 
+print_log(){
+  log=$1; message=$2
+  echo -e "$message"
+  echo >> $log "$message"
+}
+
 ########################################################################
 #                                                                      #
 # Main programme                                                       #
@@ -75,6 +77,14 @@ var(){
 ########################################################################
 
 Title "Filtering observation $OBS"
+
+start=$(date)
+echo > $log_file ""
+print_log $log_file "Start: $start"
+print_log $log_file "FOLDER      = ${FOLDER}"
+print_log $log_file "OBSERVATION = ${OBS}"
+print_log $log_file "INSTRUMENT  = ${INST}"
+print_log $log_file "RATE        = ${RATE}"
 
 ###
 # Preliminaries
@@ -128,20 +138,22 @@ else
   exit
 fi
 
-echo -e "\tRAW FILE   = ${org_file}"
-echo -e "\tCLEAN FILE = ${clean_file}"
-echo -e "\tGTI FILE   = ${gti_file}"
-echo -e "\tIMAGE FILE = ${img_file}"
-echo -e "\tRATE FILE  = ${rate_file}"
+print_log $log_file "RAW FILE   = ${org_file}"
+print_log $log_file "CLEAN FILE = ${clean_file}"
+print_log $log_file "GTI FILE   = ${gti_file}"
+print_log $log_file "IMAGE FILE = ${img_file}"
+print_log $log_file "RATE FILE  = ${rate_file}"
 
 # Creating GTI
-if [ "$INST" == "PN" ]; then 
+if [ "$INST" == "PN" ]; then
   title "Creating GTI"
 
-  evselect table=$org_file withrateset=Y rateset=$rate_file maketimecolumn=Y timebinsize=100 makeratecolumn=Y expression='#XMMEA_EP && (PI in [10000:12000]) && (PATTERN==0)' -V 0
+  evselect table=$org_file withrateset=Y rateset=$rate_file maketimecolumn=Y \
+    timebinsize=100 makeratecolumn=Y \
+    expression='#XMMEA_EP && (PI in [10000:12000]) && (PATTERN==0)' -V 0
 
   if [[ $RATE != [0-9]* ]]; then
-    echo "Opening PN_rate.fits" 
+    echo "Opening PN_rate.fits"
     fv $rate_file &
     read -p "Choose the GTI cut rate : " RATE
   fi
@@ -151,13 +163,16 @@ if [ "$INST" == "PN" ]; then
 fi
 
 # Cleaning events file
-evselect table=$org_file withfilteredset=Y filteredset=$clean_file destruct=Y keepfilteroutput=T expression="#XMMEA_E$l && gti($gti_file,TIME) && (PATTERN<=4) && (PI in [500:12000])" -V 0
+evselect table=$org_file withfilteredset=Y filteredset=$clean_file destruct=Y \
+  keepfilteroutput=T \
+  expression="#XMMEA_E$l && gti($gti_file,TIME) && (PATTERN<=4) && (PI in [500:12000])" \
+  -V 0
 
 #ds9 $events_file -bin factor 64 -scale log -cmap bb -mode region &
 
 # Creating image file
-evselect table=$clean_file imagebinning=binSize imageset=$img_file withimageset=yes xcolumn=X ycolumn=Y ximagebinsize=80 yimagebinsize=80 -V 0
+evselect table=$clean_file imagebinning=binSize imageset=$img_file \
+  withimageset=yes xcolumn=X ycolumn=Y ximagebinsize=80 yimagebinsize=80 -V 0
 
-echo > $path/PN_processing.log "Rate: $RATE"
-echo "The end" 
-date 
+end=$(date)
+print_log $log_file "End: $end"

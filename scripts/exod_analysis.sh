@@ -140,6 +140,10 @@ Title "RENDERING"
 
 python3 -W"ignore" $SCRIPTS/render_all.py -path $DIR/$obs
 
+Title "LIGHTCURVE GENERATION"
+
+
+
 
 
 

@@ -2,7 +2,7 @@
 
 ########################################################################
 #                                                                      #
-# EXOD - EPIC-pn XMM-Newton Outburst Detector                          # #                                                                      #
+# EXOD - EPIC-pn XMM-Newton Outburst Detector                          #                                                                       #
 # Various utilities for both detector and renderer                     #
 #                                                                      #
 # Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com       #
@@ -15,7 +15,6 @@ Various resources for both detector and renderer
 # Built-in imports
 
 import sys
-sys.path.append('/home/ines/anaconda3/lib/skimage')
 import os
 import time
 from functools import partial
@@ -30,6 +29,7 @@ from astropy.io import fits
 import numpy as np
 import scipy.ndimage as nd
 import skimage
+import skimage.transform
 
 # Internal imports
 
@@ -60,7 +60,8 @@ def open_files(folder_name) :
         try :
             os.makedirs(folder_name)
         except :
-            print("Error in creating output directory.\nABORTING", file=sys.stderr)
+            print("Error in creating output directory.\nABORTING",
+                    file=sys.stderr)
             exit(-1)
 
     # Declaring the files
@@ -84,7 +85,8 @@ def open_files(folder_name) :
         var_file = folder_name + FileNames.VARIABILITY
 
     except IOError as e:
-        print("Error in creating {0}.\nABORTING".format(FileNames.VARIABILITY), file=sys.stderr)
+        print("Error in creating {0}.\nABORTING".format(FileNames.VARIABILITY),
+                file=sys.stderr)
         print(e, file=sys.stderr)
         close_files(log_file, var_file, reg_file)
         print_help()
@@ -95,7 +97,8 @@ def open_files(folder_name) :
         reg_file = folder_name + FileNames.REGION
 
     except IOError as e:
-        print("Error in creating {0}.\nABORTING".format(FileNames.REGION), file=sys.stderr)
+        print("Error in creating {0}.\nABORTING".format(FileNames.REGION),
+                file=sys.stderr)
         print(e, file=sys.stderr)
         close_files(log_file, var_file, reg_file)
         print_help()
@@ -140,7 +143,8 @@ class Tee(object):
 def read_from_file(file_path, counter=False, comment_token='#', separator=';') :
     """
     Function returning the content
-    @param counter: True if it is the counters that are loaded, False if it is the variability
+    @param counter: True if it is the counters that are loaded,
+                    False if it is the variability
     @return: A list
     """
     data = []
@@ -157,7 +161,8 @@ def read_from_file(file_path, counter=False, comment_token='#', separator=';') :
                 if not counter :
                     data[nb_lignes].append(float(line))
                 else :
-                    data[nb_lignes].append([float(tok) for tok in line.split(separator)])
+                    data[nb_lignes].append([float(tok)
+                            for tok in line.split(separator)])
                 i += 1
 
     return data
@@ -230,7 +235,8 @@ class Source(object):
 
         # Launching SAS commands, writing to output file
         out_file = path + 'variable_sources.txt'
-        # The out_file will be temporarily written to the output directory, then removed.
+        # The out_file will be temporarily written to the output directory,
+        # then removed.
 
         if self.id_src == 0 : s = '>'
         else :      s = '>>'
@@ -242,7 +248,8 @@ class Source(object):
         . $HEADAS/headas-init.sh;
         . {FileNames.SAS};
         echo "# Variable source {self.id_src}"; #{s} {out_file};
-        edet2sky datastyle=user inputunit=raw X={self.rawx} Y={self.rawy} ccd={self.ccd} calinfoset={img} -V 0 {s} {out_file}
+        edet2sky datastyle=user inputunit=raw X={self.rawx} Y={self.rawy} \
+          ccd={self.ccd} calinfoset={img} -V 0 {s} {out_file}
         """
 
         # Running command, writing to file
@@ -259,10 +266,12 @@ class Source(object):
 
         for i in range(len(det2sky)) :
             # Equatorial coordinates
-            self.ra, self.dec = det2sky[np.where(det2sky == '# RA (deg)   DEC (deg)')[0][0] + 1].split()
+            self.ra, self.dec = det2sky[np.where(
+                    det2sky == '# RA (deg)   DEC (deg)')[0][0] + 1].split()
 
             # Sky pixel coordinates
-            self.x, self.y    = det2sky[np.where(det2sky == '# Sky X        Y pixel')[0][0] + 1].split()
+            self.x, self.y    = det2sky[np.where(
+                    det2sky == '# Sky X        Y pixel')[0][0] + 1].split()
 
         # Removing temporary output file
         os.remove(out_file)
@@ -282,7 +291,8 @@ def read_sources_from_file(file_path, comment_token='#', separator=';') :
         for line in f :
             if len(line) > 2 and comment_token not in line :
                 toks = line.split(separator)
-                sources.append(Source(toks[0], int(toks[1]), float(toks[2]), float(toks[3]), float(toks[4])))
+                sources.append(Source(toks[0], int(toks[1]), float(toks[2]),
+                        float(toks[3]), float(toks[4])))
 
     return sources
 
@@ -290,7 +300,7 @@ def read_sources_from_file(file_path, comment_token='#', separator=';') :
 
 def ccd_config(data_matrix) :
     """
-    Arranges the variability data
+    Provides PN CCD configuration to arrange the variability data
     """
     data_v = []
 
@@ -316,7 +326,8 @@ def ccd_config(data_matrix) :
 
 def data_transformation(data, header) :
     """
-    Performing geometrical transformations from raw coordinates to sky coordinates
+    Performing geometrical transformations from raw coordinates to
+    sky coordinates
     @param data: variability matrix
     @param header: header of the clean events file
     @return: transformed variability data
@@ -324,7 +335,8 @@ def data_transformation(data, header) :
 
     # Header information
     angle = header['PA_PNT']
-    dlim = [header['REFXLMIN'], header['REFXLMAX'], header['REFYLMIN'], header['REFYLMAX']]
+    dlim = [header['REFXLMIN'], header['REFXLMAX'],
+            header['REFYLMIN'], header['REFYLMAX']]
 
     xproj = [float(header['TDMIN6']), float(header['TDMAX6'])] # projected x limits
     yproj = [float(header['TDMIN7']), float(header['TDMAX7'])] # projected y limits
@@ -345,7 +357,8 @@ def data_transformation(data, header) :
     ## Rotation
     dataR = np.flipud(nd.rotate(data, angle, reshape = True))
     ## Resizing
-    dataT = skimage.transform.resize(dataR, (pixY, pixX), mode='constant', cval=0.0) # xy reversed
+    dataT = skimage.transform.resize(dataR, (pixY, pixX), mode='constant',
+            cval=0.0) # xy reversed
     ## Padding
     dataP = np.pad(dataT, (padY, padX), 'constant', constant_values=0) # xy reversed
 

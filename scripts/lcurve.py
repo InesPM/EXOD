@@ -34,17 +34,28 @@ from astropy.io import fits
 ###
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-path", dest="path", help="Path to the observation files", nargs='?', type=str)
-parser.add_argument("-name", dest="name", help="Source name", nargs='?', type=str)
-parser.add_argument("-obs", help="Observation identifier", nargs='?', type=str, default="")
-parser.add_argument("-src", help="Path to the source's lightcurve fits file", nargs='?', type=str, default=None)
-parser.add_argument("-bgd", help="Path to the background's lightcurve fits file", nargs='?', type=str, default=None)
-parser.add_argument("-gti", help="Path to the GTI of the observation", nargs='?', type=str, default=None)
-parser.add_argument("-tw", help="Time window", nargs='?', type=int, default=100)
-parser.add_argument("-n", help="Lightcurve number", nargs='?', type=str, default="")
-parser.add_argument("-pcs", dest="pcs", help="Chi-square probability of constancy", nargs='?', type=float, default=None)
-parser.add_argument("-pks", dest="pks", help="Kolmogorov-Smirnov probability of constancy", nargs='?', type=float, default=None)
-parser.add_argument("-mode", dest="mode", help="Plot style: monochrome / medium / color", nargs='?', type=str, default="medium")
+parser.add_argument("-path", dest="path", nargs='?', type=str,
+        help="Path to the observation files")
+parser.add_argument("-name", dest="name", nargs='?', type=str,
+        help="Source name")
+parser.add_argument("-obs", nargs='?', type=str, default="",
+        help="Observation identifier")
+parser.add_argument("-src", nargs='?', type=str, default=None,
+        help="Path to the source's lightcurve fits file")
+parser.add_argument("-bgd", nargs='?', type=str, default=None,
+        help="Path to the background's lightcurve fits file")
+parser.add_argument("-gti", nargs='?', type=str, default=None,
+        help="Path to the GTI of the observation")
+parser.add_argument("-tw", nargs='?', type=int, default=100,
+        help="Time window")
+parser.add_argument("-n", nargs='?', type=str, default="",
+        help="Lightcurve number")
+parser.add_argument("-pcs", dest="pcs", nargs='?', type=float, default=None,
+        help="Chi-square probability of constancy")
+parser.add_argument("-pks", dest="pks", nargs='?', type=float, default=None,
+        help="Kolmogorov-Smirnov probability of constancy")
+parser.add_argument("-mode", dest="mode", nargs='?', type=str,
+        default="medium", help="Plot style: monochrome / medium / color")
 args = parser.parse_args()
 
 ###
@@ -57,31 +68,34 @@ if args.path[-1] == '/' :
 
 # Source and background files
 if args.src == None :
-    lccorr = '{0}/{1}/lcurve_{2}/{3}_lccorr_{2}.lc'.format(args.path, args.obs, args.tw, args.name)
+    lccorr = '{0}/{1}/lcurve_{2}/{3}_lccorr_{2}.lc'.format(args.path, args.obs,
+            args.tw, args.name)
     print(args.name)
     if path.exists(lccorr) :
         args.src = lccorr
-    else : 
-        args.src = '{0}/{1}/lcurve_{2}/{3}_lc_{2}_src.lc'.format(args.path, args.obs, args.tw, args.name)
-        args.bgd = '{0}/{1}/lcurve_{2}/{3}_lc_{2}_bgd.lc'.format(args.path, args.obs, args.tw, args.src)
-        if not path.exists(args.name) :
+    else :
+        args.src = '{0}/{1}/lcurve_{2}/{3}_lc_{2}_src.lc'.format(args.path,
+                args.obs, args.tw, args.name)
+        args.bgd = '{0}/{1}/lcurve_{2}/{3}_lc_{2}_bgd.lc'.format(args.path,
+                args.obs, args.tw, args.name)
+        if not path.exists(args.src) :
             print('ERROR: Source File {0} does not exist'.format(args.src))
             sys.exit()
-        if not path.exists(args.name) :
+        if not path.exists(args.bgd) :
             print('ERROR: Background File {0} does not exist'.format(args.bgd))
             sys.exit()
-        
+
 # GTI file
 if args.gti == None :
     args.gti = '{0}/{1}/PN_gti.fits'.format(args.path, args.obs)
     if not path.exists(args.gti) :
         print('ERROR: File {0} does not exist'.format(args.gti))
         sys.exit()
-        
+
 # Output file
 src = (args.name).replace("_", "+")
-out='{0}/{1}/lcurve_{2}/{3}_lc_{2}.pdf'.format(args.path, args.obs, args.tw, args.name)
-print(out)
+out='{0}/{1}/lcurve_{2}/{3}_lc_{2}.pdf'.format(args.path, args.obs,
+        args.tw, args.name)
 
 ###
 # Extracting information from fits files
@@ -262,5 +276,7 @@ plt.minorticks_on()
 ax.yaxis.set_ticks_position('both')
 ax.xaxis.set_ticks_position('both')
 plt.tick_params(axis='both', which='both', direction='in', labelsize=14)
+
+print("Saving lightcurve pdf", out)
 plt.savefig(out, pad_inches=0, bbox_inches='tight')
 #plt.show()

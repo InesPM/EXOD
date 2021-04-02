@@ -41,12 +41,13 @@ from astropy.io import fits
 import file_names as FileNames
 from file_utils import *
 
-def render_variability(var_file, output_file, sources=True, pars=None, maximum_value=None) :
+def render_variability(var_file, output_file, sources=True, pars=None,
+        maximum_value=None) :
     """
-    Function rendering an from the matrix data.
-    @param data: fits file containing variability and sources data
-    @param sources: If the detected sources are plotted or not
+    Function producing output pdf plots from the computed variability.
+    @param var_file: fits file containing variability and sources data
     @param output_file: The path to the PDF file to be created
+    @param sources: If the detected sources are plotted or not
     @param pars: observation parameters
     @param maximum_value: The maximal value for the logarithmic scale
     """
@@ -75,7 +76,8 @@ def render_variability(var_file, output_file, sources=True, pars=None, maximum_v
     angle = header['PA_PNT']       # Degrees
 
     # Image limit
-    dlim = [header['REFXLMIN'], header['REFXLMAX'], header['REFYLMIN'], header['REFYLMAX']]
+    dlim = [header['REFXLMIN'], header['REFXLMAX'], header['REFYLMIN'],
+            header['REFYLMAX']]
 
 
     # Limite maximale de l'échelle des couleurs pour la normalisation par logarithme
@@ -89,7 +91,8 @@ def render_variability(var_file, output_file, sources=True, pars=None, maximum_v
     # Plotting the variability data
     plt.subplot(111, projection=w)
 
-    im = plt.imshow(data, cmap=cm.inferno, norm=colors.LogNorm(vmin=1.0, vmax=maximum_value), extent=dlim)
+    im = plt.imshow(data, cmap=cm.inferno, norm=colors.LogNorm(vmin=1.0,
+            vmax=maximum_value), extent=dlim)
 
     ax = plt.gca()
     ax.set_facecolor('k')
@@ -106,7 +109,8 @@ def render_variability(var_file, output_file, sources=True, pars=None, maximum_v
 
     ra.display_minor_ticks(True)
     dec.display_minor_ticks(True)
-    ax.tick_params(axis='both', which='both', direction='in', color='w', width=1)
+    ax.tick_params(axis='both', which='both', direction='in', color='w',
+            width=1)
 
     # Labels
     plt.xlabel('RA', fontsize=10)
@@ -116,13 +120,16 @@ def render_variability(var_file, output_file, sources=True, pars=None, maximum_v
     # Title
     #if pars != None :
     plt.title('OBS {0}'.format(header['OBS_ID']), fontsize=14)
-    plt.text(0.5, 0.95, "TW {0} s    DL {1}   BS {2}".format(header['TW'], header['DL'], header['BS']), color='white', fontsize=10, horizontalalignment='center', transform = ax.transAxes)
+    plt.text(0.5, 0.95, "TW {0} s    DL {1}   BS {2}".format(header['TW'],
+            header['DL'], header['BS']), color='white', fontsize=10,
+            horizontalalignment='center', transform = ax.transAxes)
 
     plt.savefig(output_file, pad_inches=0, bbox_inches='tight', dpi=500)
 
 ########################################################################
 
-def render_variability_all(var_file0, var_file1, var_file2, var_file3, output_file, sources=True, pars=None, maximum_value=10) :
+def render_variability_all(var_file0, var_file1, var_file2, var_file3,
+        output_file, sources=True, pars=None, maximum_value=10) :
 
     var_files = [var_file0, var_file1, var_file2, var_file3]
 
@@ -151,12 +158,14 @@ def render_variability_all(var_file0, var_file1, var_file2, var_file3, output_fi
         angle = header['PA_PNT']       # Degrees
 
         # Image limit
-        dlim = [header['REFXLMIN'], header['REFXLMAX'], header['REFYLMIN'], header['REFYLMAX']]
+        dlim = [header['REFXLMIN'], header['REFXLMAX'], header['REFYLMIN'],
+                header['REFYLMAX']]
 
         # Plotting the variability data
         plt.subplot(gs1[i], projection=w)
         ax = plt.gca()
-        im = plt.imshow(data/header['DL'], cmap=cm.inferno, norm=colors.LogNorm(vmin=0.1, vmax=1.0), extent=dlim)
+        im = plt.imshow(data/header['DL'], cmap=cm.inferno,
+                norm=colors.LogNorm(vmin=0.1, vmax=1.0), extent=dlim)
 
         # Plotting the sources
         if sources :
@@ -164,7 +173,9 @@ def render_variability_all(var_file0, var_file1, var_file2, var_file3, output_fi
                 # Position of the sources
                 plt.plot(src['X'], src['Y'], 'wo', alpha = 1, fillstyle='none')
 
-        plt.text(0.5, 0.92, "TW {0} s    DL {1}   BS {2}".format(header['TW'], header['DL'], header['BS']), color='white', fontsize=10, horizontalalignment='center', transform = ax.transAxes)
+        plt.text(0.5, 0.92, "TW {0} s    DL {1}   BS {2}".format(header['TW'],
+                header['DL'], header['BS']), color='white', fontsize=10,
+                horizontalalignment='center', transform = ax.transAxes)
 
         ra  = ax.coords[0]
         dec = ax.coords[1]
@@ -180,7 +191,8 @@ def render_variability_all(var_file0, var_file1, var_file2, var_file3, output_fi
 
         ra.display_minor_ticks(True)
         dec.display_minor_ticks(True)
-        ax.tick_params(axis='both', which='both', direction='in', color='w', width=1)
+        ax.tick_params(axis='both', which='both', direction='in',
+                color='w', width=1)
 
         ax.set_facecolor('k')
 
@@ -188,7 +200,8 @@ def render_variability_all(var_file0, var_file1, var_file2, var_file3, output_fi
     cbar_ax = fig.add_axes([0.8, 0.11, 0.02, 0.77])
     cbar    = fig.colorbar(im, cax=cbar_ax)
     cbar.ax.set_ylabel('$\mathcal{V}$ / DL', fontsize=12)
-    fig.suptitle('OBS {0}'.format(header['OBS_ID']), x=0.5, y = 0.93, fontsize=18)
+    fig.suptitle('OBS {0}'.format(header['OBS_ID']), x=0.5, y = 0.93,
+            fontsize=18)
 
     plt.savefig(output_file, pad_inches=0, dpi=500, bbox_inches='tight')
 
@@ -201,5 +214,6 @@ def ds9_renderer(var_file, reg_file) :
     @param var_file: variability fits file
     @param reg_file: region file
     """
-    command = "ds9 {0} -scale linear -cmap bb -mode region -regionfile {1}".format(var_file, reg_file)
+    command = "ds9 {0} -scale linear -cmap bb -mode region -regionfile {1}".format(
+            var_file, reg_file)
     process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)

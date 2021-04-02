@@ -17,15 +17,18 @@
 ################################################################################
 
 # Default variables
+INST=PN
 DL=8 ; TW=100 ; GTR=1.0 ; BS=3; ID=1
 # Default folders
-FOLDER=/mnt/data/Ines/data/DR5
-SCRIPTS=/mnt/data/Ines/progs
+FOLDER=$(cat file_names.py | grep FOLDER | awk '{print $3}')
+SCRIPTS=$(cat file_names.py | grep SCRIPTS | awk '{print $3}')
 
 # Input variables
 while [[ $# -gt 0 ]]; do
 case "$1" in
   -o|-obs|--observation)  OBS=${2}
+  shift; shift ;;
+  -i|--instrument)        INST=${2:-$INST}
   shift; shift ;;
   # Variables
   -dl|--detection-level)  DL=${2:-$DL}
@@ -71,7 +74,7 @@ title3(){
 
 input(){
   message="$1"; var="$2"
-  read -p "$(tput setaf 6)$message $(tput sgr 0)" out 
+  read -p "$(tput setaf 6)$message $(tput sgr 0)" out
   printf -v $var $out
 }
 
@@ -86,14 +89,14 @@ echo -e "\tSCRIPTS         = ${SCRIPTS}"
 echo -e "\tOUTPUT LOG      = ${output_log}\n"
 echo -e "\tDETECTION LEVEL = ${DL}"
 echo -e "\tTIME WINDOW     = ${TW}"
-echo -e "\tGOOD TIME RATIO = ${GTR}" 
+echo -e "\tGOOD TIME RATIO = ${GTR}"
 echo -e "\tBOX SIZE        = ${BS}"
 echo -e "\tCPUS            = ${CPUS}"
 
 # Selecting the files and paths
-clean_file=$path/PN_clean.fits
+clean_file=$path/${INST}_clean.fits
 gti_file=$path/PN_gti.fits
-img_file=$path/PN_image.fits
+img_file=$path/${INST}_image.fits
 sum_file=$(ls $path/*SUM.ASC)
 fbk_file=$(ls $path/*$OBS*PNS*FBKTSR*)
 path_out=$path/lcurve_${TW}
@@ -103,13 +106,13 @@ cd $path
 # Setting SAS tools
 export SAS_ODF=$path
 export SAS_CCF=$path/ccf.cif
-export HEADAS=/usr/local/heasoft-6.22.1/x86_64-unknown-linux-gnu-libc2.19/
+export HEADAS=/home/ines/astrosoft/heasoft-6.25/x86_64-pc-linux-gnu-libc2.27
 . $HEADAS/headas-init.sh
-. /usr/local/SAS/xmmsas_20170719_1539/setsas.sh
+. /home/ines/astrosoft/xmmsas_20180620_1732/setsas.sh
 if [ ! -f $path/ccf.cif ]; then cifbuild; fi
 
-# Setting SAS tools	
-export SAS_ODF=$path						
+# Setting SAS tools
+export SAS_ODF=$path
 export SAS_CCF=$path/ccf.cif
 export SAS_VERBOSITY=0
 bash /usr/local/SAS/xmmsas_20170719_1539/setsas.sh
@@ -119,8 +122,8 @@ if [ ! -f $path/ccf.cif ]; then cifbuild; fi
 echo "  Select the source and background extraction region (X,Y,R): "
 if [ ! -f $path/${DL}_${TW}_1.0_${BS}/sources.pdf ]; then python3 /home/pastor/python3 -Wignore $SCRIPTS/renderer.py $folder/$OBS/${DL}_${TW}_1.0_${BS} $clean_file -obs $OBS -tw $TW -dl $DL
 fi
-if [ $ID == "1" ]; then 
-ds9 $clean_file -bin factor 64 -scale log -cmap b -mode region &
+if [ $ID == "1" ]; then
+ds9 $clean_file -bin factor 64 -scale log -cmap bb -mode region &
 evince $path/${DL}_${TW}_1.0_${BS}/sources.pdf &
 fi
 evselect table=$clean_file imagebinning=binSize imageset=$img_file withimageset=yes xcolumn=X ycolumn=Y ximagebinsize=80 yimagebinsize=80
@@ -145,7 +148,7 @@ if [[ $reply = [n,N]* ]] ; then exit; fi
 
 echo -e "\n"
 input "Source position     [X] " srcX
-input "Source position     [Y] " srcY 
+input "Source position     [Y] " srcY
 input "Background position [X] " bgdX
 input "Background position [Y] " bgdY
 input "Radius              [R] " R
@@ -197,20 +200,20 @@ title2 "Extracting lightcurve"
 if [ ! -f $path/PN_gti.wi ]; then gti2xronwin -i $path/PN_gti.fits -o $path/PN_gti.wi; fi
 
 title3 "evselect 0.0734 s"
-evselect table=$clean_file energycolumn=PI expression="$srcexp" withrateset=yes rateset=$path_out/${src}_lc_0.0734_src.lc timebinsize=0.0734 maketimecolumn=yes makeratecolumn=yes -V 0
-evselect table=$clean_file energycolumn=PI expression="$bgdexp" withrateset=yes rateset=$path_out/${src}_lc_0.0734_bgd.lc timebinsize=0.0734 maketimecolumn=yes makeratecolumn=yes -V 0
+evselect table=$clean_file energycolumn=PI expression="$srcexp" withrateset=yes rateset=$path_out/${src}_${INST}_0.0734_src.lc timebinsize=0.0734 maketimecolumn=yes makeratecolumn=yes -V 0
+evselect table=$clean_file energycolumn=PI expression="$bgdexp" withrateset=yes rateset=$path_out/${src}_${INST}_0.0734_bgd.lc timebinsize=0.0734 maketimecolumn=yes makeratecolumn=yes -V 0
 
 title3 "evselect $TW s"
-evselect table=$clean_file energycolumn=PI expression="$srcexp" withrateset=yes rateset=$path_out/${src}_lc_${TW}_src.lc timebinsize=$TW maketimecolumn=yes makeratecolumn=yes -V 0
-evselect table=$clean_file energycolumn=PI expression="$bgdexp" withrateset=yes rateset=$path_out/${src}_lc_${TW}_bgd.lc timebinsize=$TW maketimecolumn=yes makeratecolumn=yes -V 0
+evselect table=$clean_file energycolumn=PI expression="$srcexp" withrateset=yes rateset=$path_out/${src}_${INST}_${TW}_src.lc timebinsize=$TW maketimecolumn=yes makeratecolumn=yes -V 0
+evselect table=$clean_file energycolumn=PI expression="$bgdexp" withrateset=yes rateset=$path_out/${src}_${INST}_${TW}_bgd.lc timebinsize=$TW maketimecolumn=yes makeratecolumn=yes -V 0
 
 title3 "epiclccorr"
-epiclccorr srctslist=$path_out/${src}_lc_${TW}_src.lc eventlist=$clean_file outset=$path_out/${src}_lccorr_${TW}.lc bkgtslist=$path_out/${src}_lc_${TW}_bgd.lc withbkgset=yes applyabsolutecorrections=yes -V 0
+epiclccorr srctslist=$path_out/${src}_${INST}_${TW}_src.lc eventlist=$clean_file outset=$path_out/${src}_${INST}lccorr_${TW}.lc bkgtslist=$path_out/${src}_${INST}_${TW}_bgd.lc withbkgset=yes applyabsolutecorrections=yes -V 0
 sleep 1
 
 title3 "lcstats"
-lcstats cfile1="$path_out/${src}_lccorr_${TW}.lc" window=$path/PN_gti.wi dtnb=${TW} nbint=1000000 tchat=2
-P=$(lcstats cfile1="$path_out/${src}_lccorr_${TW}.lc" window=$path/PN_gti.wi dtnb=${TW} nbint=1000000 tchat=2 | grep "Prob of constancy")
+lcstats cfile1="$path_out/${src}_${INST}lccorr_${TW}.lc" window=$path/PN_gti.wi dtnb=${TW} nbint=1000000 tchat=2
+P=$(lcstats cfile1="$path_out/${src}_${INST}lccorr_${TW}.lc" window=$path/PN_gti.wi dtnb=${TW} nbint=1000000 tchat=2 | grep "Prob of constancy")
 sleep 1
 
 P_chisq=$(echo $P | sed "s/Chi-Square Prob of constancy. //" | sed "s/ (0 means.*//")

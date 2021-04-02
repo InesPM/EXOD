@@ -23,7 +23,7 @@ from functools import partial
 
 from math import *
 from multiprocessing import Pool
-from astropy.io import fits
+from astropy.io import fits, ascii
 from astropy.table import Table
 from astropy import wcs
 from astropy.coordinates import SkyCoord
@@ -49,27 +49,53 @@ from renderer import *
 parser = argparse.ArgumentParser()
 
 # Path to files
-parser.add_argument("-evts", help="Name of the clean observation file", type=str, nargs='?', default=FileNames.CLEAN_FILE)
-parser.add_argument("-gti", help="Name of the GTI file", type=str, nargs='?', default=FileNames.GTI_FILE)
-parser.add_argument("-img", help="Name of the image file", type=str, nargs='?', default=FileNames.IMG_FILE)
-parser.add_argument("-path", help="Path to the folder containing the observation files", type=str)
-parser.add_argument("-out", help="Path to the folder where the output files will be stored", default=None, type=str)
+parser.add_argument("-evts", help="Name of the clean observation file",
+        type=str, nargs='?', default=FileNames.CLEAN_FILE)
+parser.add_argument("-gti", help="Name of the GTI file",
+        type=str, nargs='?', default=FileNames.GTI_FILE)
+parser.add_argument("-img", help="Name of the image file",
+        type=str, nargs='?', default=FileNames.IMG_FILE)
+parser.add_argument("-path",
+        help="Path to the folder containing the observation files", type=str)
+parser.add_argument("-out",
+        help="Path to the folder where the output files will be stored",
+        default=None, type=str)
 
 # Variability parameters
-parser.add_argument("-bs", "--box-size", dest="bs", help="Size of the detection box in pixel^2.\nDefault: 5", default=5, nargs='?', type=int)
-parser.add_argument("-dl", "--detection-level", dest="dl", help="The number of times the median variability is required to trigger a detection.\nDefault: 10", default=10, nargs='?', type=float)
-parser.add_argument("-tw", "--time-window", dest="tw", help="The duration of the time windows.\n Default: 100", default=100.0, nargs='?', type=float)
-parser.add_argument("-gtr", "--good-time-ratio", dest="gtr", help="Ratio of acceptability for a time window. Shall be between 0.0 and 1.0.\nDefault: 1.0", default=1.0, nargs='?', type=float)
-parser.add_argument("-mta", "--max-threads-allowed", dest="mta", help="Maximal number of CPUs the program is allowed to use.\nDefault: 12", nargs='?', default=12, type=int)
+parser.add_argument("-bs", "--box-size", dest="bs",
+        help="Size of the detection box in pixel^2.\nDefault: 5",
+        default=5, nargs='?', type=int)
+parser.add_argument("-dl", "--detection-level", dest="dl",
+        help="The number of times the median variability is required to "
+        "trigger a detection.\nDefault: 10",
+        default=10, nargs='?', type=float)
+parser.add_argument("-tw", "--time-window", dest="tw",
+        help="The duration of the time windows.\n Default: 100",
+        default=100.0, nargs='?', type=float)
+parser.add_argument("-gtr", "--good-time-ratio", dest="gtr",
+        help="Ratio of acceptability for a time window. "
+        "Shall be between 0.0 and 1.0.\nDefault: 1.0", default=1.0, nargs='?',
+        type=float)
+parser.add_argument("-mta", "--max-threads-allowed", dest="mta",
+        help="Maximal number of CPUs the program is allowed to use. "
+        "\nDefault: 12", nargs='?', default=12, type=int)
 
 # Arguments set by default
-parser.add_argument("-creator", dest="creator", help="User creating the variability files", nargs='?', default=os.environ['USER'], type=str)
-parser.add_argument("-obs", "--observation", dest="obs", help="Observation ID", default=None, nargs='?', type=str)
+parser.add_argument("-creator", "--creator", dest="creator",
+        help="User creating the variability files", nargs='?',
+        default=os.environ['USER'], type=str)
+parser.add_argument("-obs", "--observation", dest="obs",
+        help="Observation ID", default=None, nargs='?', type=str)
 
 # Boolean flags
-parser.add_argument('--render', help='Plot variability output, produce pdf', action='store_true')
-parser.add_argument('--ds9', help='Plot variability output in emerging ds9 window', action='store_true')
-parser.add_argument("--novar", help='Skip variability computation if already done', action='store_true')
+parser.add_argument("-r", "--render", help='Plot variability output, produce pdf',
+        action='store_true')
+parser.add_argument("-ds9", "--ds9",
+        help="Plot variability output in emerging ds9 window",
+        action="store_true")
+parser.add_argument("-nv", "--novar",
+        help="Skip variability computation if already done",
+        action="store_true")
 
 args = parser.parse_args()
 
@@ -79,7 +105,8 @@ if args.path[-1] != '/' :
 if args.out != None and args.out[-1] != '/' :
     args.out = args.out + '/'
 if args.out == None :
-    args.out = args.path + '{}_{}_{}_{}/'.format(int(args.dl), int(args.tw), args.bs, args.gtr)
+    args.out = args.path + '{}_{}_{}_{}/'.format(int(args.dl),
+            int(args.tw), args.bs, args.gtr)
 args.evts = args.path + args.evts
 args.gti  = args.path + args.gti
 args.img  = args.path + args.img
@@ -135,7 +162,8 @@ def main_fct() :
     if not args.novar and not vf:
 
         # Recovering the EVENTS list
-        print(" Recovering the events list\t {:7.2f} s".format(time.time() - original_time))
+        print(" Recovering the events list\t {:7.2f} s".format(
+                time.time() - original_time))
         try :
             data, header = extraction_photons(args.evts)
 
@@ -144,13 +172,15 @@ def main_fct() :
 
         except Exception as e:
             print(" !!!!\nImpossible to extract photons. ABORTING.")
-            close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detected_var_sources_f)
+            close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f,
+                    tws_f, detected_var_sources_f)
             exit(-2)
 
         # Parameters ready
         params = {
                   "CREATOR" : args.creator,
-                  "DATE"    : time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+                  "DATE"    : time.strftime("%Y-%m-%d %H:%M:%S",
+                                time.gmtime()),
                   "OBS_ID"  : args.obs,
                   "TW"      : args.tw,
                   "GTR"     : args.gtr,
@@ -160,12 +190,14 @@ def main_fct() :
 
         # Recovering GTI list
         try:
-            print(" Extracting data\t\t {:7.2f} s".format(time.time() - original_time))
+            print(" Extracting data\t\t {:7.2f} s".format(
+                    time.time() - original_time))
             gti_list = extraction_deleted_periods(args.gti)
 
         except Exception as e:
             print(" !!!!\nImpossible to extract gti. ABORTING.")
-            close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f, tws_f, detected_var_sources_f)
+            close_files(log_f, var_f, var_per_tw_f, detected_var_areas_f,
+                    tws_f, detected_var_sources_f)
             exit(-2)
 
         time_windows = []
@@ -175,11 +207,13 @@ def main_fct() :
     ###
     # Computing variability
     ###
-        print(" Computing variability\t\t {:7.2f} s".format(time.time() - original_time))
+        print(" Computing variability\t\t {:7.2f} s".format(
+                time.time() - original_time))
         # Computing v_matrix
         v_matrix = []
 
-        var_calc_partial = partial(variability_computation, gti_list, args.tw, args.gtr, t0_observation, tf_observation)
+        var_calc_partial = partial(variability_computation, gti_list,
+                args.tw, args.gtr, t0_observation, tf_observation)
 
         with Pool(args.mta) as p:
             v_matrix = p.map(var_calc_partial, data)
@@ -192,8 +226,11 @@ def main_fct() :
     # Detecting variable areas and sources
     ###
 
-        print(" Detecting variable sources\t {:7.2f} s".format(time.time() - original_time))
-        median = np.median([v_matrix[ccd][i][j] for ccd in range(12) for i in range(len(v_matrix[ccd])) for j in range(len(v_matrix[ccd][i]))])
+        print(" Detecting variable sources\t {:7.2f} s".format(
+                time.time() - original_time))
+        median = np.median([v_matrix[ccd][i][j]
+                for ccd in range(12) for i in range(len(v_matrix[ccd]))
+                for j in range(len(v_matrix[ccd][i]))])
 
         # Avoiding a too small median value for detection
         print("\n\tMedian\t\t{0}".format(median))
@@ -204,14 +241,17 @@ def main_fct() :
         variable_areas = []
 
         # Currying the function for the pool of threads
-        variable_areas_detection_partial = partial(variable_areas_detection, median, args.bs, args.dl)
+        variable_areas_detection_partial = partial(variable_areas_detection,
+                median, args.bs, args.dl)
         print("\tBox counts\t{0}".format(args.dl * ((args.bs**2))))
         # Performing parallel detection on each CCD
         with Pool(args.mta) as p:
             variable_areas = p.map(variable_areas_detection_partial, v_matrix)
 
         # Variable sources
-        sources = variable_sources_position(variable_areas, args.obs, args.path, reg_f, log_f, args.img)
+        sources = variable_sources_position(variable_areas, args.obs,
+                args.path, reg_f, log_f, args.img)
+        ascii.write(sources, args.out + 'variable_sources.csv', format='csv')
 
         print("\tNb of sources\t{0}\n".format(len(sources)))
 
@@ -225,17 +265,21 @@ def main_fct() :
     # Renderer
     if args.render :
 
-        print(" Rendering variability image\t {:7.2f} s".format(time.time() - original_time))
+        print(" Rendering variability image\t {:7.2f} s".format(
+                time.time() - original_time))
 
-        render_variability(var_f, args.out + FileNames.OUTPUT_IMAGE, sources=False, maximum_value=10)
-        render_variability(var_f, args.out + FileNames.OUTPUT_IMAGE_SRCS, sources=True, maximum_value=10)
+        render_variability(var_f, args.out + FileNames.OUTPUT_IMAGE,
+                sources=False, maximum_value=10)
+        render_variability(var_f, args.out + FileNames.OUTPUT_IMAGE_SRCS,
+                sources=True, maximum_value=10)
 
     # ds9
     if args.ds9 :
         ds9_renderer(var_f, reg_f)
 
     # Ending program
-    print(" # Total execution time OBS {0} : {1:.2f} s\n".format(args.obs, (time.time() - original_time)))
+    print(" # Total execution time OBS {0} : {1:.2f} s\n".format(
+            args.obs, (time.time() - original_time)))
     log_f.close()
 
 ########################################################################

@@ -30,7 +30,8 @@ from file_utils import *
 #                                                                      #
 ########################################################################
 
-def variability_computation(gti, time_interval, acceptable_ratio, start_time, end_time, data) :
+def variability_computation(gti, time_interval, acceptable_ratio, start_time,
+		end_time, data) :
 	"""
 	Function implementing the variability calculation using average technique.
 	@param  gti:     G round, the list of TW cut-off the observation
@@ -58,10 +59,12 @@ def variability_computation(gti, time_interval, acceptable_ratio, start_time, en
 	cdt_start = []
 	cdt_stop  = []
 	for l in range(len(gti['START'])):
-		start = np.where((time_windows[:] < gti[l]['START']) & (time_windows[:] + time_interval > gti[l]['START']))[0]
+		start = np.where((time_windows[:] < gti[l]['START']) & \
+				(time_windows[:] + time_interval > gti[l]['START']))[0]
 		if len(start) != 0 :
 			cdt_start.append(start[0])
-		stop  = np.where((gti[l]['STOP'] > time_windows[:]) & (gti[l]['STOP'] < time_windows[:] + time_interval))[0]
+		stop  = np.where((gti[l]['STOP'] > time_windows[:]) & \
+				(gti[l]['STOP'] < time_windows[:] + time_interval))[0]
 		if len(stop) != 0 :
 			cdt_stop.append(stop[0])
 
@@ -89,7 +92,8 @@ def variability_computation(gti, time_interval, acceptable_ratio, start_time, en
 			projection_ratio[n] = 0
 
 		# Counting events
-		while i < len(data) and data[i]['TIME'] <= time_windows[n] + time_interval :
+		while i < len(data) \
+				and data[i]['TIME'] <= time_windows[n] + time_interval :
 			j = int(data[i]['RAWX'])-1
 			k = int(data[i]['RAWY'])-1
 			for x in range(j-1,j+2) :
@@ -112,7 +116,8 @@ def variability_computation(gti, time_interval, acceptable_ratio, start_time, en
 				min = np.amin(counted_events[i][j])
 				med = np.median(counted_events[i][j])
 				if med != 0 :
-					V_mat[i][j] = np.amax([(max - med),np.absolute(min - med)])/med
+					V_mat[i][j] = np.amax(
+							[(max - med),np.absolute(min - med)])/med
 				else :
 					V_mat[i][j] = max
 
@@ -161,17 +166,20 @@ def __add_to_detected_areas(x, y, box_size, detected_areas) :
     @param y:   The y coordinate of the top-left corner of the box
     @param box_size:   The length of a side of a box
     @param detected_areas:  The A round set, containing already detected areas
-    @return: The sum of the variability for each pixel of the box ??? Should be the A round set, containing the updated detected areas
+    @return: The sum of the variability for each pixel of the box ???
+			 Should be the A round set, containing the updated detected areas
     """
     box_set = {(a, b) for a in range(x, x + box_size) for b in range(y, y + box_size)}
 
     inserted = False
     i = 0
     while (not inserted) and i < len(detected_areas) :
-        # If a part of the box has already been detected, the two sets of coordinates are merged...
+        # If a part of the box has already been detected,
+		# the two sets of coordinates are merged...
         if len(box_set & detected_areas[i]) > 1 :
             detected_areas[i] |= box_set
-            #Equivalent to detected_areas[i] = detected_areas[i] | box_set => add area of the box to the detected areas
+            #Equivalent to detected_areas[i] = detected_areas[i] | box_set =>
+			# add area of the box to the detected areas
             # ...and the loop is over
             inserted = True
         i += 1
@@ -190,7 +198,9 @@ def __add_to_detected_areas(x, y, box_size, detected_areas) :
 def variable_areas_detection(lower_limit, box_size, detection_level, variability_matrix) :
 	"""
 	Function detecting variable areas into a variability_matrix.
-	@param lower_limit:         The lower_limit value is the smallest variability value needed to consider a pixel variable
+	@param lower_limit:         The lower_limit value is the smallest
+								variability value needed to consider a pixel
+								variable
 	@param box_size:            The size of the box (optional, default = 3)
 	@param detection_level:     A factor for the limit of detection
 	@param variability_matrix:  The matrix returned by variability_calculation
@@ -221,7 +231,8 @@ def variable_areas_detection(lower_limit, box_size, detection_level, variability
 
 	return output
 
-def variable_sources_position(variable_areas_matrix, obs, path_out, reg_file, log_file, img_file) :
+def variable_sources_position(variable_areas_matrix, obs, path_out, reg_file,
+		log_file, img_file) :
 	"""
 	Function computing the position of the detected varable sources.
 	@param variable_areas_matrix: variable_areas_detection output
@@ -239,16 +250,22 @@ def variable_sources_position(variable_areas_matrix, obs, path_out, reg_file, lo
 	        center_x = round(sum([p[0] for p in source]) / len(source), 2)
 	        center_y = round(sum([p[1] for p in source]) / len(source), 2)
 
-	        r = round(sqrt( (max([abs(p[0] - center_x) for p in source]))**2 + (max([abs(p[1] - center_y) for p in source]))**2 ), 2)
+	        r = round(sqrt( (max([abs(p[0] - center_x)
+					for p in source]))**2 + (max([abs(p[1] - center_y)
+					for p in source]))**2 ), 2)
 
 	        # Avoiding bad pixels
-	        if [ccd, int(center_x)] not in [[4,11], [4,12], [4,13], [5,12], [10,28]] :
+	        if [ccd, int(center_x)] not in [[4,11], [4,12], [4,13],
+					[5,12], [10,28]] :
 	            cpt_source += 1
 	            sources.append([cpt_source, ccd+1, center_x, center_y, r])
 
 
 	# Making output table
-	source_table = Table(names=('ID', 'CCDNR', 'RAWX', 'RAWY', 'RAWR', 'X', 'Y', 'SKYR', 'RA', 'DEC', 'R'), dtype=('i2', 'i2', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8'))
+	source_table = Table(names=('ID', 'CCDNR', 'RAWX', 'RAWY', 'RAWR',
+			'X', 'Y', 'SKYR', 'RA', 'DEC', 'R'),
+			dtype=('i2', 'i2', 'f8', 'f8', 'f8',
+			'f8', 'f8', 'f8', 'f8', 'f8', 'f8'))
 
 	# Head text
 	text = """# Region file format: DS9 version 4.0 global

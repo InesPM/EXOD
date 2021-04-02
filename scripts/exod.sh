@@ -20,7 +20,7 @@
 DL=8 ; TW=100 ; GTR=1.0 ; BS=3 ; CPUS=12
 # Default folders
 FOLDER=/mnt/data/Ines/data
-SCRIPTS=/mnt/data/Ines/EXOD
+SCRIPTS=/mnt/data/Ines/EXOD/scripts
 
 # Input variables
 while [[ $# -gt 0 ]]; do
@@ -48,7 +48,7 @@ echo -e "\tFOLDER          = ${FOLDER}"
 echo -e "\tSCRIPTS         = ${SCRIPTS}\n"
 echo -e "\tDETECTION LEVEL = ${DL}"
 echo -e "\tTIME WINDOW     = ${TW}"
-echo -e "\tGOOD TIME RATIO = ${GTR}" 
+echo -e "\tGOOD TIME RATIO = ${GTR}"
 echo -e "\tBOX SIZE        = ${BS}"
 echo -e "\tCPUS            = ${CPUS}"
 
@@ -78,7 +78,7 @@ title(){
 
 var(){
   x=$1
-  out=$(cat scripts/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
+  out=$(cat $SCRIPTS/file_names.py | grep ^$x | awk '{print $3}' | sed 's/"//g')
   echo $out
 }
 
@@ -102,11 +102,12 @@ filtering(){
   obs=$1
 
   if [ ! -f $FOLDER/$obs/PN_clean.fits ] ; then
-    echo "bash $SCRIPTS/filtering.sh -f $FOLDER -o $obs" >> $FOLDER/process_flt_${DL}_${TW}_${GTR}_${BS}
+    echo "bash $SCRIPTS/filtering.sh -f $FOLDER -o $obs" >> \
+      $FOLDER/process_flt_${DL}_${TW}_${BS}_${GTR}
   fi
 }
 
-variabilitectron(){
+variability(){
 
   ###
   # Defining files and directories
@@ -117,28 +118,41 @@ variabilitectron(){
   path=$FOLDER/$obs
   events_file=$path/$(var CLEAN_FILE)
   gti_file=$path/$(var GTI_FILE)
- img_file=$path/$(var IMG_FILE)
+  img_file=$path/$(var IMG_FILE)
 
   ###
   # Variability computation
   ###
   # writing detector and renderer commands to file that will be run in parallel
-  echo "python3 -W"ignore" $SCRIPTS/detector.py -evts $events_file -gti $gti_file -img $img_file -path $path -out $path/${DL}_${TW}_${GTR}_${BS} -bs $BS -dl $DL -tw $TW -gtr $GTR -mta 1 --render >> $FOLDER/process_det_${DL}_${TW}_${GTR}_${BS}"
+  echo "python3 -W"ignore" $SCRIPTS/detector.py -path $path \
+    -bs $BS -dl $DL -tw $TW -gtr $GTR -mta 1 --render" >> \
+    $FOLDER/process_det_${DL}_${TW}_${BS}_${GTR}
   ((++count))
 }
 
 lightcurves(){
 
   # Output file
-  echo "Observation Source DL TW P_chisq P_KS" >> $FOLDER/sources_variability_${DL}_${TW}_${GTR}_${BS}
+  echo "Observation Source DL TW P_chisq P_KS" >> \
+    $FOLDER/sources_variability_${DL}_${TW}_${BS}_${GTR}
+
+  for obs in ${observations[@]}; do
+    var_src=$obs/${DL}_${TW}_${BS}_${GTR}/variable_sources.csv
+    if [ -f $var_src ]; then
+      if [ $(cat $var_src | wc -l) -gt 1 ]; then
+        nsrc=$(($(cat $var_src | wc -l) - 1))
+        echo "$obs $nsrc $DL $TW" >> \
+          $FOLDER/variable_sources_${DL}_${TW}_${BS}_${GTR}
+      fi
+    fi
+  done
 
   # Reading file
   let i=0
   while read line ; do
     line_data[$i]="${line}"
     ((++i))
-    echo $i
-  done < $FOLDER/variable_sources_${DL}_${TW}_${GTR}_${BS}
+  done < $FOLDER/variable_sources_${DL}_${TW}_${BS}_${GTR}
 
   # Starting loop
   for data in "${line_data[@]:1:i-1}"; do
@@ -152,7 +166,9 @@ lightcurves(){
 
     count=1
     while [[ $count -le $src ]] ; do
-      echo "bash $SCRIPTS/lightcurve.sh -f $FOLDER -s $SCRIPTS -o $obs -dl $DL -tw $TW -gtr $GTR -bs $BS -id $count" >> $FOLDER/process_lc_${DL}_${TW}_${GTR}_${BS}
+      echo "bash $SCRIPTS/lightcurve.sh -f $FOLDER -s $SCRIPTS -o $obs \
+        -dl $DL -tw $TW -gtr $GTR -bs $BS -id $count" >> \
+        $FOLDER/process_lc_${DL}_${TW}_${BS}_${GTR}
       ((++count))
     done
     #fi
@@ -171,11 +187,15 @@ observations=(0*)
 count=1
 
 # Removing existing log files to avoid overwriting them
-logs=(detected_sources_${DL}_${TW}_${GTR}_${BS} process_flt_${DL}_${TW}_${GTR}_${BS} process_det_${DL}_${TW}_${GTR}_${BS} process_ren_${DL}_${TW}_${GTR}_${BS} process_lc_${DL}_${TW}_${GTR}_${BS} sources_variability_${DL}_${TW}_${GTR}_${BS} variable_sources_${DL}_${TW}_${GTR}_${BS})
+logs=(detected_sources_${DL}_${TW}_${BS}_${GTR} \
+  process_flt_${DL}_${TW}_${BS}_${GTR} process_det_${DL}_${TW}_${BS}_${GTR} \
+  process_ren_${DL}_${TW}_${BS}_${GTR} process_lc_${DL}_${TW}_${BS}_${GTR} \
+  sources_variability_${DL}_${TW}_${BS}_${GTR} \
+  variable_sources_${DL}_${TW}_${BS}_${GTR})
 for l in ${logs[@]} ; do if [ -f $l ]; then rm $l; fi; done
-#rm process_lc_${DL}_${TW}_${GTR}_${BS}
+#rm process_lc_${DL}_${TW}_${BS}_${GTR}
 
-echo "Observation sources DL TW" >> variable_sources_${DL}_${TW}_${GTR}_${BS}
+echo "Observation sources DL TW" >> variable_sources_${DL}_${TW}_${BS}_${GTR}
 
 ###
 # Launching the variability computation
@@ -192,56 +212,56 @@ time {
     # Filtering observations
     filtering $obs
     # Variability computation
-    variabilitectron $obs
+    variability $obs
   done
 
   # Filtering observations
   Title "Filtering observations"
-  bash $SCRIPTS/parallel.sh $FOLDER/process_flt_${DL}_${TW}_${GTR}_${BS} $CPUS
+  bash $SCRIPTS/parallel.sh $FOLDER/process_flt_${DL}_${TW}_${BS}_${GTR} $CPUS
   waitForFinish 'evselect'
 
   # Running detector
   Title "Applying detector"
-  bash $SCRIPTS/parallel.sh $FOLDER/process_det_${DL}_${TW}_${GTR}_${BS} $CPUS
-  waitForFinish 'python'
-
-  # Running renderer
-  Title "Applying renderer"
-  bash $SCRIPTS/parallel.sh $FOLDER/process_ren_${DL}_${TW}_${GTR}_${BS} $CPUS
+  bash $SCRIPTS/parallel.sh $FOLDER/process_det_${DL}_${TW}_${BS}_${GTR} $CPUS
   waitForFinish 'python'
 
   Title "Creating big pdf with observations"
-  files=()
-  for obs in ${observations[@]}; do 
-    if [ -f $FOLDER/$obs/${DL}_${TW}_${GTR}_${BS}/sources.pdf ]; then 
-      files+=($FOLDER/$obs/${DL}_${TW}_${GTR}_${BS}/sources.pdf)
-    fi
-  done
-  gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=$FOLDER/variability_observations_${DL}_${TW}_${GTR}_${BS}.pdf ${files[@]}
+  files=$(ls */${DL}_${TW}_${BS}_${GTR}/sources.pdf)
+  gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite \
+    -sOutputFile=$FOLDER/variability_observations_${DL}_${TW}_${BS}_${GTR}.pdf \
+    ${files[@]}
 
   # Generating lightcurves
   Title "Generating lightcurves"
-  lightcurves 
-  bash $SCRIPTS/parallel.sh $FOLDER/process_lc_${DL}_${TW}_${GTR}_${BS} $CPUS
+  lightcurves
+  bash $SCRIPTS/parallel.sh $FOLDER/process_lc_${DL}_${TW}_${BS}_${GTR} $CPUS
   sleep 10; waitForFinish 'evince'
   sleep 10; waitForFinish 'arfgen'
   sleep 10; waitForFinish 'epiclccorr'
   sleep 10; waitForFinish 'python'
   sleep 10
 
-  Title "Creating big pdf with sources"
-  files=()
-  let i=0
-  while read line ; do
-    if [[ $line == [0-9]* ]]; then 
-      IFS=' ' read -r -a array <<< "$line"
-      obs=${array[0]}
-      src=${array[2]}
-      fil=$FOLDER/$obs/lcurve_${TW}/${src}_lc_${TW}.pdf
-      if [ -f $fil ]; then files+=($fil); fi
+  title "Writing sources variability to a single file"
+
+  for obs in ${observations[@]}; do
+    if compgen -G "$obs/lcurve_${TW}/*xronos.log" > /dev/null; then
+      var_files=$(ls $obs/lcurve_${TW}/*xronos.log)
+      for var_src in ${var_files[@]}; do
+        P_chisq=$(cat $var_src | grep "Chi-Square Prob of constancy" \
+          | awk '{print $5}')
+        P_KS=$(cat $var_src | grep "Kolm.-Smir. Prob of constancy" \
+          |  awk '{print $5}')
+        src=$(echo $var_src | sed 's/.*J/J/g' | sed 's/_.*//g')
+        echo "$obs $src $DL $TW $P_chisq $P_KS" >> \
+          sources_variability_${DL}_${TW}_${BS}_${GTR}
+      done
     fi
-  done < $FOLDER/sources_variability_${DL}_${TW}_${GTR}_${BS}
-  gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=$FOLDER/lightcurves_${DL}_${TW}_${GTR}_${BS}.pdf ${files[@]}
+  done
+
+  Title "Creating big pdf with sources"
+  files=$(ls */lcurve_${TW}/*.pdf)
+  gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite \
+    -sOutputFile=$FOLDER/lightcurves_${DL}_${TW}_${BS}_${GTR}.pdf ${files[@]}
 
   echo -e "\nTotal execution time for $nb_img obs. : "
 }

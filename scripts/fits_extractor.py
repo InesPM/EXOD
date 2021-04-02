@@ -4,7 +4,7 @@
 
 ########################################################################
 #                                                                      #
-# EXOD - EPIC-pn XMM-Newton Outburst Detector                          # #                                                                      #
+# EXOD - EPIC-pn XMM-Newton Outburst Detector                          #                                                                       #
 # DETECTOR utilities                                                   #
 #                                                                      #
 # Inés Pastor Marazuela (2019) - ines.pastor.marazuela@gmail.com       #
@@ -59,7 +59,8 @@ def extraction_photons(events_file):
     hdulist.close()
     events_filtered_sorted = []
     for i in range(12) :
-        events_filtered_sorted.append(sorted(events_filtered[i], key=lambda k: int(k['TIME'])))
+        events_filtered_sorted.append(sorted(events_filtered[i],
+                key=lambda k: int(k['TIME'])))
 
     return events_filtered_sorted, header
 
@@ -111,7 +112,8 @@ def fits_writer(data, sources, image, pars, file) :
     head_var_f.append(card=('DL', pars['DL'], 'EXOD Detection level'))
     head_var_f.append(card=('BS', pars['BS'], '[pix] EXOD Box size'))
 
-    # data_var_f = Table(names=('VARIABILITY', 'RAWX', 'RAWY', 'CCDNR'), dtype=('f8', 'i2', 'i2', 'i2'))
+    # data_var_f = Table(names=('VARIABILITY', 'RAWX', 'RAWY', 'CCDNR'),
+    # dtype=('f8', 'i2', 'i2', 'i2'))
 
     # Creating fits file
     hdul_f   = fits.HDUList()
